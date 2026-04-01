@@ -3,27 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK ONLINE | M. Rıdvan Saygın</title>
+    <title>GAFİL KÖSTEBEK ONLINE | V22</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #000; --panel: #111; --accent: #fff; --red: #ff4d4d; --gold: #ffd700; --silver: #c0c0c0; --bronze: #cd7f32; --gray: #444; }
-        body { background-color: var(--bg); color: var(--accent); font-family: -apple-system, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        :root { --bg: #000; --panel: #111; --accent: #fff; --red: #ff4d4d; --gold: #ffd700; --gray: #444; --green: #4caf50; }
+        body { background-color: var(--bg); color: var(--accent); font-family: -apple-system, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { width: 95%; max-width: 420px; background: var(--panel); border: 2px solid #222; border-radius: 30px; padding: 20px; text-align: center; box-sizing: border-box; }
         .marquee-rules { background: #0a0a0a; color: var(--gold); padding: 8px 0; font-size: 0.72em; border-radius: 50px; margin-bottom: 15px; overflow: hidden; white-space: nowrap; border: 1px solid #333; }
         .marquee-content { display: inline-block; animation: scroll 30s linear infinite; padding-left: 100%; }
         @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-100%); } }
-        h1 { letter-spacing: 1px; font-size: 1.4em; margin: 5px 0; color: var(--accent); }
-        .author { color: #444; font-size: 0.7em; margin-bottom: 15px; font-weight: bold; }
-        input, .btn { width: 100%; padding: 16px; margin: 8px 0; border-radius: 12px; border: none; font-size: 1.1em; box-sizing: border-box; font-weight: bold; }
+        h1 { font-size: 1.4em; color: var(--accent); margin: 10px 0; }
+        input, .btn { width: 100%; padding: 16px; margin: 8px 0; border-radius: 12px; border: none; font-size: 1.1em; font-weight: bold; box-sizing: border-box; }
         input { background: #1a1a1a; color: #fff; border: 1px solid #333; text-align: center; }
         .btn-main { background: var(--accent); color: #000; cursor: pointer; }
         .btn-gafil { background: var(--gold); color: #000; }
-        .btn-katil { background: var(--red); color: #fff; }
+        .btn-red { background: var(--red); color: #fff; }
         .player-card { background: #151515; padding: 12px; margin: 6px 0; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--gray); }
-        .rank-0 { border-left-color: var(--gold) !important; color: var(--gold) !important; }
+        .mic-btn { background: var(--gray); border: none; color: white; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 0.8em; }
+        .mic-on { background: var(--green); }
+        .mic-off { background: var(--red); }
         .hidden { display: none !important; }
         .word-box { background: #1a1a1a; border: 3px dashed #444; padding: 35px 10px; font-size: 2em; font-weight: bold; margin: 15px 0; border-radius: 15px; color: var(--gold); }
-        #timer-display { font-size: 2.5em; color: var(--red); font-weight: bold; margin: 10px 0; }
+        #timer-display { font-size: 2.8em; color: var(--red); font-weight: bold; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -34,20 +35,23 @@
             <div class="marquee-content">3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. 3 pas olursa eleme olmaz. Köstebek kaçarsa 1 puan, yakalanırsa siviller 1 puan alır.</div>
         </div>
         <h1>GAFİL KÖSTEBEK <span style="color:var(--gold);">ONLINE</span></h1>
-        <div class="author">EDİTÖR: M. RIDVAN SAYGIN</div>
+        <p style="font-size:0.8em; color:#888;">İsmini yaz. Oda kur, linki arkadaşına gönder.</p>
         
         <div id="setup-area">
-            <input type="text" id="nameInput" placeholder="Adını Yaz">
+            <input type="text" id="nameInput" placeholder="Adınızı Yazın">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER)</button>
         </div>
 
         <div id="lobby-area" class="hidden">
-            <p id="share-link" style="font-size:0.7em; color:var(--gold); word-break:break-all;"></p>
+            <div id="share-info" style="background:#222; padding:10px; border-radius:10px; margin-bottom:10px;">
+                <p style="font-size:0.65em; margin:0; color:var(--gold);">Arkadaşına gönder:</p>
+                <p id="share-link" style="font-size:0.6em; word-break:break-all; margin:5px 0;"></p>
+            </div>
             <div id="player-list"></div>
             <div id="host-controls" class="hidden">
                 <div style="display:flex; gap:5px;">
                     <button class="btn btn-gafil" onclick="oyunuBaslat('gafil')">GAFİL MODU</button>
-                    <button class="btn btn-katil" onclick="oyunuBaslat('katil')">KATİL MODU</button>
+                    <button class="btn btn-red" onclick="oyunuBaslat('katil')">KATİL MODU</button>
                 </div>
             </div>
         </div>
@@ -56,38 +60,27 @@
     <div id="screen-game" class="hidden">
         <h2 id="role-title">---</h2>
         <div class="word-box" id="word-display">---</div>
-        <button class="btn btn-main" id="toggle-word-btn" onclick="toggleWord()">GİZLE</button>
+        <button class="btn btn-main" id="toggle-word-btn" onclick="togW()">GİZLE</button>
         
         <div id="host-action" class="hidden">
-            <button class="btn btn-gafil" onclick="startDiscussion()">🎤 TARTIŞMAYI BAŞLAT</button>
+            <button class="btn btn-gafil" onclick="startDiscussion()">🎤 TARTIŞMAYI BAŞLAT (30s)</button>
         </div>
 
         <div id="discussion-area" class="hidden">
-            <div id="speaker-name" style="color:var(--gold);">Konuşuyor: ---</div>
+            <div id="speaker-name" style="color:var(--gold); font-size:1.2em;">👤 ---</div>
             <div id="timer-display">30</div>
-            <button class="btn btn-gray" id="end-turn-btn" onclick="nextSpeakerReq()" style="display:none;">SÖZÜ DEVRET</button>
-        </div>
-
-        <div id="vote-area" class="hidden">
-            <h3>OYLAMA</h3>
-            <div id="vote-options"></div>
-            <button class="btn btn-red" onclick="sendVote('PAS')">PAS GEÇ</button>
+            <button class="btn btn-main" id="end-turn-btn" onclick="hostNext()" style="display:none; background:var(--gray); color:white;">SÖZÜ DEVRET</button>
         </div>
     </div>
 </div>
 
 <script>
-    let peer, myId, myName, conn, localStream, isHost = false;
-    let players = [], connections = {}, scores = {}, currentSpeakerIdx = 0;
-    
-    // Senin dosyadaki 405 kelimenin özeti (Tamamını buraya ekleyebilirsin)
-    const havuz = [
-        ["Kredi Kartı", "Nakit Para"], ["Metrobüs", "Metro"], ["Yapay Zeka", "İnsan Beyni"], ["Tavuk Döner", "Et Döner"], ["Klima", "Vantilatör"], ["Türk Kahvesi", "Filtre Kahve"], ["Tarkan", "Murat Boz"], ["Lionel Messi", "Cristiano Ronaldo"], ["Lahmacun", "Pide"], ["Netflix", "YouTube"], ["Boyoz", "Gevrek"], ["Instagram", "TikTok"], ["Çay", "Kahve"], ["Kedi", "Köpek"], ["Apple", "Samsung"]
-    ];
+    let peer, myId, myName, localStream, isHost = false;
+    let players = [], connections = {}, calls = {}, currentSpkIdx = 0;
+    const havuz = [["Boyoz", "Gevrek"], ["Çay", "Kahve"], ["Metro", "Tramvay"], ["Messi", "Ronaldo"], ["Döner", "Kebap"]];
 
-    async function startAudio() {
-        try { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-        catch (e) { alert("Sesli oyun için mikrofon izni şart!"); }
+    async function getMedia() {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     }
 
     function odaKur() {
@@ -95,139 +88,150 @@
         if(!myName) return;
         isHost = true;
         myId = "KST-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-        startAudio().then(() => {
+        getMedia().then(() => {
             initPeer(myId);
             document.getElementById('setup-area').classList.add('hidden');
             document.getElementById('lobby-area').classList.remove('hidden');
             document.getElementById('host-controls').classList.remove('hidden');
             document.getElementById('share-link').innerText = window.location.href.split('?')[0] + "?join=" + myId;
-            players = [{name: myName, score: 0}];
+            players = [{name: myName, mic: true}];
             renderLobby();
         });
     }
 
-    // Link ile Katılım
+    function initPeer(id) {
+        peer = new Peer(id);
+        peer.on('connection', c => {
+            c.on('data', d => {
+                if(d.type === 'join') {
+                    connections[d.name] = c;
+                    players.push({name: d.name, mic: true});
+                    broadcast({ type: 'sync', players });
+                    renderLobby();
+                    // ÖNEMLİ: Lider yeni gelen kişiyi ARAR
+                    const call = peer.call(c.peer, localStream);
+                    call.on('stream', s => playAudio(s, d.name));
+                } else if(d.type === 'next_req') { if(isHost) hostNext(); }
+            });
+        });
+        peer.on('call', call => {
+            call.answer(localStream);
+            call.on('stream', s => playAudio(s, "Lider"));
+        });
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const joinId = urlParams.get('join');
     if(joinId) {
         document.getElementById('setup-area').innerHTML = `
-            <input type="text" id="nameInput" placeholder="Adını Yaz">
-            <button class="btn btn-main" onclick="startAudio().then(() => odayaKatil('${joinId}'))">🎤 ODAYA KATIL</button>
+            <input type="text" id="nameInput" placeholder="Adınızı Yazın">
+            <button class="btn btn-main" onclick="getMedia().then(() => odayaKatil('${joinId}'))">🎤 ODAYA KATIL</button>
         `;
     }
 
     function odayaKatil(id) {
         myName = document.getElementById('nameInput').value.trim();
         peer = new Peer();
-        peer.on('open', () => {
-            conn = peer.connect(id);
-            conn.on('open', () => {
-                conn.send({ type: 'join', name: myName });
+        peer.on('open', (pid) => {
+            const c = peer.connect(id);
+            c.on('open', () => {
+                c.send({ type: 'join', name: myName });
                 document.getElementById('setup-area').classList.add('hidden');
                 document.getElementById('lobby-area').classList.remove('hidden');
-                peer.call(id, localStream);
             });
-            conn.on('data', handleData);
-        });
-        peer.on('call', call => { call.answer(localStream); call.on('stream', s => playAudio(s)); });
-    }
-
-    function initPeer(id) {
-        peer = new Peer(id);
-        peer.on('connection', c => {
-            c.on('data', d => handleData(d, c));
+            c.on('data', d => {
+                if(d.type === 'sync') { players = d.players; renderLobby(); }
+                if(d.type === 'start') showGame(d);
+                if(d.type === 'disc') runDisc(d.idx);
+            });
         });
         peer.on('call', call => {
             call.answer(localStream);
-            call.on('stream', s => playAudio(s));
-            // Diğerlerine de bağla
-            Object.values(connections).forEach(target => {
-                if(target.peer !== call.peer) peer.call(target.peer, localStream);
-            });
+            call.on('stream', s => playAudio(s, "Oda"));
         });
     }
 
-    function handleData(data, c) {
-        if(data.type === 'join') {
-            connections[data.name] = c;
-            if(!players.find(p => p.name === data.name)) players.push({name: data.name, score: 0});
-            broadcast({ type: 'sync', players });
-            renderLobby();
-        } else if(data.type === 'sync') {
-            players = data.players;
-            renderLobby();
-        } else if(data.type === 'start') {
-            showGame(data);
-        } else if(data.type === 'disc') {
-            runDisc(data.idx);
-        }
+    function playAudio(stream, name) {
+        const audio = new Audio();
+        audio.srcObject = stream;
+        audio.play();
     }
 
     function renderLobby() {
         const list = document.getElementById('player-list');
-        players.sort((a,b) => b.score - a.score);
         list.innerHTML = players.map((p, i) => `
-            <div class="player-card ${i === 0 ? 'rank-0' : ''}">
+            <div class="player-card">
                 <span>👤 ${p.name}</span>
-                <span>🎯 ${p.score} P</span>
+                <button class="mic-btn ${p.mic ? 'mic-on' : 'mic-off'}" onclick="toggleMic('${p.name}')">
+                    ${p.mic ? 'MİK: AÇIK' : 'MİK: KAPALI'}
+                </button>
             </div>
         `).join('');
     }
 
-    function oyunuBaslat(mode) {
-        const pair = havuz[Math.floor(Math.random() * havuz.length)];
-        const spyIdx = Math.floor(Math.random() * players.length);
-        const data = { type: 'start', mode, pair, spy: players[spyIdx].name };
-        broadcast(data);
-        showGame(data);
+    function toggleMic(name) {
+        if(myName !== name) return;
+        const p = players.find(x => x.name === name);
+        p.mic = !p.mic;
+        localStream.getAudioTracks()[0].enabled = p.mic;
+        if(!isHost) peer.connect(joinId).send({type:'sync', players}); // Basit senkron
+        renderLobby();
     }
 
-    function showGame(data) {
+    function oyunuBaslat(mode) {
+        const pair = havuz[Math.floor(Math.random() * havuz.length)];
+        const spy = players[Math.floor(Math.random() * players.length)].name;
+        const d = { type: 'start', mode, pair, spy };
+        broadcast(d); showGame(d);
+    }
+
+    function showGame(d) {
         document.getElementById('screen-lobby').classList.add('hidden');
         document.getElementById('screen-game').classList.remove('hidden');
-        const isSpy = myName === data.spy;
+        const isSpy = myName === d.spy;
         document.getElementById('role-title').innerText = isSpy ? "KÖSTEBEKSİN!" : "SİVİLSİN";
-        document.getElementById('role-title').style.color = isSpy ? "var(--red)" : "var(--gold)";
-        let word = data.pair[0];
-        if(isSpy) word = (data.mode === 'katil') ? "KÖSTEBEKSİN" : data.pair[1];
+        let word = d.pair[0];
+        if(isSpy) word = (d.mode === 'katil') ? "KÖSTEBEKSİN" : d.pair[1];
         document.getElementById('word-display').innerText = word;
         if(isHost) document.getElementById('host-action').classList.remove('hidden');
     }
 
-    function toggleWord() {
-        const d = document.getElementById('word-display');
-        const b = document.getElementById('toggle-word-btn');
-        if(d.classList.contains('hidden')) { d.classList.remove('hidden'); b.innerText = "GİZLE"; }
-        else { d.classList.add('hidden'); b.innerText = "GÖR"; }
-    }
-
-    function startDiscussion() {
-        broadcast({ type: 'disc', idx: 0 });
-        runDisc(0);
-    }
+    function startDiscussion() { currentSpkIdx = 0; broadcast({type:'disc', idx:0}); runDisc(0); }
 
     function runDisc(idx) {
         document.getElementById('host-action').classList.add('hidden');
         document.getElementById('discussion-area').classList.remove('hidden');
         const speaker = players[idx].name;
         document.getElementById('speaker-name').innerText = "Konuşuyor: " + speaker;
-        document.getElementById('end-turn-btn').style.display = (myName === speaker) ? "block" : "none";
-        startTimer(30, () => { if(isHost) nextStep(idx); });
-    }
-
-    function startTimer(s, cb) {
-        let t = s;
-        const display = document.getElementById('timer-display');
+        document.getElementById('end-turn-btn').style.display = (myName === speaker || isHost) ? "block" : "none";
+        
+        let t = 30;
+        const disp = document.getElementById('timer-display');
         clearInterval(window.tmr);
-        display.innerText = t;
+        disp.innerText = t;
         window.tmr = setInterval(() => {
-            t--; display.innerText = t;
-            if(t <= 0) { clearInterval(window.tmr); cb(); }
+            t--; disp.innerText = t;
+            if(t <= 0) { clearInterval(window.tmr); if(isHost) hostNext(); }
         }, 1000);
     }
 
+    function hostNext() {
+        currentSpkIdx++;
+        if(currentSpkIdx < players.length) {
+            broadcast({type:'disc', idx: currentSpkIdx});
+            runDisc(currentSpkIdx);
+        } else {
+            alert("Tartışma bitti, oylamaya geçin!");
+        }
+    }
+
+    function nextSpeakerReq() { if(isHost) hostNext(); else peer.connect(joinId).send({type:'next_req'}); }
+    function togW() { 
+        const d = document.getElementById('word-display'); 
+        d.classList.toggle('hidden'); 
+        document.getElementById('toggle-word-btn').innerText = d.classList.contains('hidden') ? "GÖR" : "GİZLE";
+    }
     function broadcast(d) { if(isHost) Object.values(connections).forEach(c => c.send(d)); }
-    function playAudio(s) { const a = document.createElement('audio'); a.srcObject = s; a.play(); }
 </script>
 </body>
 </html>
