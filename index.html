@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KÖSTEBEK ONLINE V18</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root { --gold: #ffd700; --bg: #0d0d0d; --red: #ff4d4d; }
+        body { background: var(--bg); color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; text-align: center; }
+        .box { background: #1a1a1a; border: 1px solid #333; border-radius: 20px; padding: 20px; max-width: 380px; margin: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .btn { width: 100%; padding: 15px; background: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.05em; margin: 8px 0; transition: 0.2s; }
+        .btn-red { background: var(--red); color: #fff; }
+        .btn-gray { background: #444; color: #fff; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 10px; border: 1px solid #444; background: #222; color: #fff; text-align: center; box-sizing: border-box; }
+        .hidden { display: none !important; }
+        .p-card { background: #252525; padding: 10px; margin: 5px 0; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--gold); }
+        .delete-btn { color: var(--red); font-weight: bold; cursor: pointer; padding: 5px 10px; }
+        .word-box { font-size: 2.5em; font-weight: bold; color: var(--gold); margin: 20px 0; padding: 25px; border: 2px dashed #444; border-radius: 15px; background: #111; }
+        #timer { font-size: 2em; color: var(--red); font-weight: bold; margin: 10px 0; }
+        .vote-item { background: #333; padding: 10px; margin: 5px; border-radius: 8px; cursor: pointer; }
+        .vote-item.selected { border: 2px solid var(--gold); background: #444; }
+    </style>
+</head>
+<body>
+
+<div class="box" id="menu">
+    <h1 style="color:var(--gold); margin-bottom:5px;">KÖSTEBEK</h1>
+    <input type="text" id="userName" placeholder="Adınız">
+    <button class="btn" onclick="setupRoom()">ODA KUR</button>
+    <p style="font-size: 0.8em; color: #666;">Veya arkadaşının gönderdiği linke tıkla!</p>
+</div>
+
+<div class="box hidden" id="lobby">
+    <h3 id="lobby-status">Oda Hazırlanıyor...</h3>
+    <div id="qrcode" style="background:white; padding:10px; display:inline-block; border-radius:10px; margin:10px 0;" class="hidden"></div>
+    <div id="link-area" class="hidden">
+        <p style="font-size: 0.8em; color: #888;">Bu linki arkadaşına gönder:</p>
+        <div id="share-link" style="font-size: 0.7em; color: var(--gold); word-break: break-all; background:#222; padding:10px; border-radius:8px;"></div>
+    </div>
+    
+    <div id="player-list" style="margin: 20px 0; text-align: left;"><b>Oyuncular:</b></div>
+    
+    <div id="host-controls" class="hidden">
+        <select id="gameMode" class="btn btn-gray" style="text-align: center;">
+            <option value="gafil">MOD: GAFİL (Kelimeyi Hiç Bilmeyen)</option>
+            <option value="kostebek">MOD: KÖSTEBEK (Farklı Kelime)</option>
+        </select>
+        <button class="btn" onclick="startGame()">OYUNU BAŞLAT</button>
+    </div>
+    <button class="btn btn-red" onclick="location.reload()">ODADAN ÇIK</button>
+</div>
+
+<div class="box hidden" id="game-screen">
+    <h2 id="role-title">ROLÜN</h2>
+    <div id="word-area">
+        <div class="word-box" id="word-display">---</div>
+        <button class="btn btn-gray" id="hide-btn" onclick="toggleWord(true)">KELİMEYİ GİZLE</button>
+        <button class="btn hidden" id="show-btn" onclick="toggleWord(false)">KELİMEYİ GÖSTER</button>
+    </div>
+    
+    <div id="vote-controls" class="hidden">
+        <hr border="1">
+        <button class="btn" id="start-vote-btn" onclick="initiateVote()">OYLAMAYI BAŞLAT</button>
+    </div>
+
+    <div id="voting-area" class="hidden">
+        <div id="timer">10</div>
+        <div id="vote-options"></div>
+        <p id="not-voted" style="font-size:0.8em; color: #aaa;"></p>
+    </div>
+</div>
+
+<script>
+    let peer, myId, myName, conn, isHost = false;
+    let players = [], connections = {};
+    let votes = {}, hasVoted = false;
+    const pool = [["Boyoz", "Gevrek"], ["Çay", "Kahve"], ["Tavuk Döner", "Et Döner"], ["Instagram", "TikTok"]];
+
+    function setupRoom() {
+        myName = document.getElementById('userName').value.trim();
+        if(!myName) return alert("Adınızı yazın!");
+        isHost = true;
+        myId = "KST-" + Math.random().toString(36).substr(2, 5).toUpperCase();
+        initPeer(myId);
+    }
+
+    function initPeer(id) {
+        peer = new Peer(id);
+        peer.on('open', (openedId) => {
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('lobby').classList.remove('hidden');
+            if(isHost) {
+                const link = window.location.href.split('?')[0] + "?join=" + openedId;
+                document.getElementById('share-link').innerText = link;
+                document.getElementById('qrcode').classList.remove('hidden');
+                document.getElementById('link-area').classList.remove('hidden');
+                document.getElementById('host-controls').classList.remove('hidden');
+                new QRCode(document.getElementById("qrcode"), { text: link, width: 120, height: 120 });
+                addPlayerToList(myName, true);
+            }
+        });
+
+        peer.on('connection', (c) => {
+            c.on('data', (data) => handleData(data, c));
+        });
+    }
+
+    // Link ile giriş kontrolü
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinId = urlParams.get('join');
+    if(joinId) {
+        document.getElementById('menu').innerHTML = `<h3>Odaya Katıl</h3><input type="text" id="userName" placeholder="Adınız"><button class="btn" onclick="joinRoom('${joinId}')">KATIL</button>`;
+    }
+
+    function joinRoom(id) {
+        myName = document.getElementById('userName').value.trim();
+        if(!myName) return alert("Adınızı yazın!");
+        peer = new Peer();
+        peer.on('open', () => {
+            conn = peer.connect(id);
+            conn.on('open', () => {
+                conn.send({ type: 'join', name: myName });
+                document.getElementById('menu').classList.add('hidden');
+                document.getElementById('lobby').classList.remove('hidden');
+                document.getElementById('lobby-status').innerText = "Lobiye Bağlanıldı";
+            });
+            conn.on('data', handleData);
+        });
+    }
+
+    function handleData(data, c) {
+        if(data.type === 'join') {
+            connections[data.name] = c;
+            addPlayerToList(data.name);
+            broadcast({ type: 'list', list: players });
+        } else if(data.type === 'list') {
+            players = data.list;
+            renderPlayerList();
+        } else if(data.type === 'start') {
+            renderGame(data);
+        } else if(data.type === 'kick') {
+            location.reload();
+        } else if(data.type === 'vote_start') {
+            startVotingProcess();
+        } else if(data.type === 'cast_vote') {
+            votes[data.from] = data.target;
+            updateVoteStatus();
+        }
+    }
+
+    function addPlayerToList(name, host = false) {
+        if(!players.includes(name)) players.push(name);
+        renderPlayerList();
+    }
+
+    function renderPlayerList() {
+        const listDiv = document.getElementById('player-list');
+        listDiv.innerHTML = "<b>Oyuncular:</b>";
+        players.forEach(p => {
+            let html = `<div class="p-card"><span>👤 ${p}</span>`;
+            if(isHost && p !== myName) {
+                html += `<span class="delete-btn" onclick="kickPlayer('${p}')">SİL</span>`;
+            }
+            html += `</div>`;
+            listDiv.innerHTML += html;
+        });
+    }
+
+    function kickPlayer(name) {
+        if(connections[name]) {
+            connections[name].send({ type: 'kick' });
+            players = players.filter(p => p !== name);
+            delete connections[name];
+            renderPlayerList();
+            broadcast({ type: 'list', list: players });
+        }
+    }
+
+    function startGame() {
+        const mode = document.getElementById('gameMode').value;
+        const pair = pool[Math.floor(Math.random() * pool.length)];
+        const spy = players[Math.floor(Math.random() * players.length)];
+        const data = { type: 'start', mode, pair, spy };
+        broadcast(data);
+        renderGame(data);
+    }
+
+    function renderGame(data) {
+        document.getElementById('lobby').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        const isSpy = (myName === data.spy);
+        document.getElementById('role-title').innerText = isSpy ? "KÖSTEBEKSİN!" : "SİVİLSİN";
+        document.getElementById('role-title').style.color = isSpy ? "var(--red)" : "var(--gold)";
+        
+        let word = data.pair[0];
+        if(isSpy) word = (data.mode === 'gafil') ? "???" : data.pair[1];
+        document.getElementById('word-display').innerText = word;
+        
+        if(isHost) document.getElementById('vote-controls').classList.remove('hidden');
+    }
+
+    function toggleWord(hide) {
+        document.getElementById('word-display').classList.toggle('hidden', hide);
+        document.getElementById('hide-btn').classList.toggle('hidden', hide);
+        document.getElementById('show-btn').classList.toggle('hidden', !hide);
+    }
+
+    function initiateVote() {
+        broadcast({ type: 'vote_start' });
+        startVotingProcess();
+    }
+
+    function startVotingProcess() {
+        document.getElementById('voting-area').classList.remove('hidden');
+        const options = document.getElementById('vote-options');
+        options.innerHTML = "";
+        players.forEach(p => {
+            options.innerHTML += `<div class="vote-item" onclick="submitVote('${p}')">${p}</div>`;
+        });
+        
+        let timeLeft = 10;
+        const timerDiv = document.getElementById('timer');
+        const interval = setInterval(() => {
+            timeLeft--;
+            timerDiv.innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(interval);
+                finalizeVote();
+            }
+        }, 1000);
+    }
+
+    function submitVote(target) {
+        if(hasVoted) return;
+        hasVoted = true;
+        document.querySelectorAll('.vote-item').forEach(i => i.classList.add('hidden'));
+        if(isHost) {
+            votes[myName] = target;
+            updateVoteStatus();
+        } else {
+            conn.send({ type: 'cast_vote', from: myName, target: target });
+        }
+    }
+
+    function updateVoteStatus() {
+        const notVoted = players.filter(p => !votes[p]);
+        document.getElementById('not-voted').innerText = "Oy beklenenler: " + (notVoted.join(", ") || "Herkes oy verdi!");
+    }
+
+    function finalizeVote() {
+        let results = {};
+        players.forEach(p => results[p] = 0);
+        Object.values(votes).forEach(v => results[v]++);
+        
+        let winner = Object.keys(results).reduce((a, b) => results[a] > results[b] ? a : b);
+        alert("Oylama Bitti! En çok oy alan: " + winner);
+        location.reload();
+    }
+
+    function broadcast(data) {
+        Object.values(connections).forEach(c => c.send(data));
+    }
+</script>
+</body>
+</html>
