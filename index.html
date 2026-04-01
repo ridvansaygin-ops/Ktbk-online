@@ -3,71 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KÖSTEBEK ONLINE V24 | WePlay Style</title>
+    <title>KÖSTEBEK ONLINE V25 | WePlay Style</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #000; --panel: #111; --accent: #fff; --red: #ff4d4d; --gold: #ffd700; --gray: #222; --green: #4caf50; }
         body { background-color: var(--bg); color: var(--accent); font-family: -apple-system, sans-serif; margin: 0; padding: 10px; text-align: center; }
-        .container { width: 100%; max-width: 420px; background: var(--panel); border: 2px solid #222; border-radius: 30px; padding: 20px; box-sizing: border-box; margin: auto; position: relative; }
+        .container { width: 100%; max-width: 420px; background: var(--panel); border: 2px solid #222; border-radius: 30px; padding: 20px; box-sizing: border-box; margin: auto; }
         
-        /* Üst Mikrofon Paneli (Her Ekranda Sabit) */
-        #mic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; background: #0a0a0a; padding: 10px; border-radius: 15px; border: 1px solid #333; }
-        .p-box { background: #1a1a1a; padding: 8px; border-radius: 10px; font-size: 0.75em; border: 1px solid #333; position: relative; }
-        .p-active { border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
-        .mic-btn { width: 100%; margin-top: 5px; font-size: 0.8em; padding: 4px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; }
-        .m-on { background: var(--green); color: white; }
-        .m-off { background: var(--red); color: white; }
+        /* Oyuncu Listesi / Mikrofon Paneli */
+        #player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; padding: 10px; background: #0a0a0a; border-radius: 15px; border: 1px solid #333; }
+        .p-box { background: #1a1a1a; padding: 10px; border-radius: 12px; font-size: 0.8em; border: 2px solid transparent; transition: 0.3s; }
+        .p-active { border-color: var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(1.05); }
+        .p-muted { opacity: 0.5; }
+        .mic-tag { font-size: 0.7em; color: var(--gold); display: block; margin-top: 5px; font-weight: bold; }
 
         .btn { width: 100%; padding: 16px; margin: 8px 0; border-radius: 12px; border: none; font-size: 1.1em; font-weight: bold; cursor: pointer; }
         .btn-main { background: var(--accent); color: #000; }
         .btn-gafil { background: var(--gold); color: #000; }
         .btn-red { background: var(--red); color: white; }
         
-        input { width: 100%; padding: 16px; margin: 8px 0; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; text-align: center; box-sizing: border-box; }
+        input { width: 100%; padding: 16px; margin: 10px 0; border-radius: 12px; border: 1px solid #333; background: #1a1a1a; color: #fff; text-align: center; box-sizing: border-box; }
         .hidden { display: none !important; }
         .word-box { background: #1a1a1a; border: 2px dashed #444; padding: 25px; font-size: 1.8em; font-weight: bold; margin: 15px 0; border-radius: 15px; color: var(--gold); }
-        #timer-display { font-size: 2.5em; color: var(--red); font-weight: bold; }
+        #timer-display { font-size: 3em; color: var(--red); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="mic-grid" class="hidden"></div>
+    <div id="player-grid" class="hidden"></div>
 
     <div id="screen-setup">
-        <h1>GAFİL KÖSTEBEK <span style="color:var(--gold);">ONLINE</span></h1>
-        <p style="font-size:0.85em; color:#888; margin-bottom:20px;">İsmini yaz. Oda kur, linki arkadaşına gönder.</p>
+        <h1>KÖSTEBEK <span style="color:var(--gold);">ONLINE</span></h1>
+        <p style="font-size:0.8em; color:#888;">İsmini yaz ve odayı kur veya katıl.</p>
         <input type="text" id="nameInput" placeholder="Adını Yaz">
-        <button class="btn btn-main" id="btn-host" onclick="initSession(true)">🎤 ODA KUR</button>
+        <button class="btn btn-main" id="btn-host" onclick="startApp(true)">🎤 ODA KUR</button>
         <div id="join-area" class="hidden">
-            <button class="btn btn-gafil" id="btn-join" onclick="initSession(false)">🎤 ODAYA KATIL</button>
+            <button class="btn btn-gafil" id="btn-join" onclick="startApp(false)">🎤 ODAYA KATIL</button>
         </div>
     </div>
 
     <div id="screen-lobby" class="hidden">
-        <div id="share-info" style="background:#0a0a0a; padding:10px; border-radius:10px; margin-bottom:15px; border: 1px solid #333;">
-            <p style="font-size:0.65em; margin:0; color:var(--gold);">Arkadaşına Gönder:</p>
-            <p id="share-link" style="font-size:0.55em; word-break:break-all; margin:5px 0;"></p>
-        </div>
+        <p id="share-link" style="font-size:0.6em; color:var(--gold); background:#0a0a0a; padding:10px; border-radius:10px;"></p>
         <div id="host-controls" class="hidden">
-            <button class="btn btn-gafil" onclick="startNewGame('gafil')">GAFİL MODU BAŞLAT</button>
-            <button class="btn btn-red" onclick="startNewGame('katil')">KATİL MODU BAŞLAT</button>
+            <button class="btn btn-gafil" onclick="beginGame('gafil')">GAFİL MODU</button>
+            <button class="btn btn-red" onclick="beginGame('katil')">KATİL MODU</button>
         </div>
-        <p id="wait-msg">Liderin oyunu başlatması bekleniyor...</p>
+        <p id="wait-msg">Liderin başlatması bekleniyor...</p>
     </div>
 
     <div id="screen-game" class="hidden">
-        <h2 id="role-title">ROLÜNÜZ</h2>
+        <h2 id="role-title">ROLÜN</h2>
         <div class="word-box" id="word-display">---</div>
-        <button class="btn btn-gray" onclick="toggleWordDisplay()" style="background:#333; color:white; font-size:0.8em; height:40px; padding:0;">GİZLE / GÖSTER</button>
+        <button class="btn btn-gray" onclick="toggleWord()" style="background:#333; color:white; height:40px; padding:0;">GİZLE / GÖSTER</button>
 
         <div id="discussion-area" class="hidden" style="margin-top:20px;">
             <div id="timer-display">30</div>
-            <button class="btn btn-main" id="pass-btn" onclick="requestNextTurn()" style="display:none;">SÖZÜ DEVRET</button>
+            <button class="btn btn-main" id="pass-btn" onclick="requestNext()" style="display:none;">SÖZÜ DEVRET</button>
         </div>
 
         <div id="vote-area" class="hidden">
-            <h3>OYLAMA ZAMANI</h3>
+            <h3>OYLAMA</h3>
             <div id="vote-btns"></div>
         </div>
     </div>
@@ -75,32 +71,20 @@
 
 <script>
     let peer, myId, myName, localStream, isHost = false, joinId;
-    let players = [], connections = {}, remoteAudios = {};
-    let currentSpeakerIndex = 0, gameTimer;
+    let players = [], connections = {}, remoteStreams = {};
+    let currentSpeakerIdx = 0, timer;
 
-    const testHavuz = [
-        ["Tavuk Döner", "Et Döner"], ["Çay", "Kahve"], ["Instagram", "TikTok"], ["Boyoz", "Gevrek"],
-        ["Messi", "Ronaldo"], ["Apple", "Samsung"], ["Netflix", "Sinema"], ["Kedi", "Köpek"],
-        ["Yaz", "Kış"], ["Deniz", "Havuz"], ["Araba", "Motor"], ["Pizza", "Hamburger"],
-        ["Gitar", "Piyano"], ["Gündüz", "Gece"], ["Para", "Mutluluk"]
-    ];
+    const testWords = [["Boyoz", "Gevrek"], ["Çay", "Kahve"], ["Nakit", "Kart"], ["Messi", "Ronaldo"]];
 
-    // Link Kontrolü
-    const urlParams = new URLSearchParams(window.location.search);
-    joinId = urlParams.get('join');
-    if(joinId) {
-        document.getElementById('btn-host').classList.add('hidden');
-        document.getElementById('join-area').classList.remove('hidden');
-    }
+    const urlP = new URLSearchParams(window.location.search);
+    joinId = urlP.get('join');
+    if(joinId) { document.getElementById('btn-host').classList.add('hidden'); document.getElementById('join-area').classList.remove('hidden'); }
 
-    async function initSession(host) {
+    async function startApp(host) {
         myName = document.getElementById('nameInput').value.trim();
-        if(!myName) return alert("İsim yazmalısın!");
+        if(!myName) return alert("İsim gir!");
         isHost = host;
-        
-        try {
-            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch(e) { alert("Mikrofon izni verilmedi!"); return; }
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
         peer = new Peer(host ? "KST-" + Math.random().toString(36).substr(2, 5).toUpperCase() : undefined);
         
@@ -108,17 +92,17 @@
             myId = id;
             document.getElementById('screen-setup').classList.add('hidden');
             document.getElementById('screen-lobby').classList.remove('hidden');
-            document.getElementById('mic-grid').classList.remove('hidden');
+            document.getElementById('player-grid').classList.remove('hidden');
 
             if(isHost) {
                 document.getElementById('host-controls').classList.remove('hidden');
                 document.getElementById('wait-msg').classList.add('hidden');
                 document.getElementById('share-link').innerText = window.location.href.split('?')[0] + "?join=" + id;
                 players = [{name: myName, id: myId}];
-                updateUIPanel();
+                updateGrid();
             } else {
                 const conn = peer.connect(joinId);
-                handleConnection(conn);
+                setupConn(conn);
             }
         });
 
@@ -126,133 +110,116 @@
             call.answer(localStream);
             call.on('stream', stream => {
                 const audio = new Audio(); audio.srcObject = stream; audio.play();
-                remoteAudios[call.peer] = audio;
+                // Başlangıçta herkesi sustur (Sadece sırası gelen açılacak)
+                audio.muted = true;
+                remoteStreams[call.peer] = audio;
             });
         });
 
-        if(isHost) peer.on('connection', conn => handleConnection(conn));
+        if(isHost) peer.on('connection', c => setupConn(c));
     }
 
-    function handleConnection(conn) {
+    function setupConn(conn) {
         connections[conn.peer] = conn;
-        conn.on('data', data => {
-            if(data.type === 'join' && isHost) {
-                players.push({name: data.name, id: data.id});
+        conn.on('data', d => {
+            if(d.type === 'join' && isHost) {
+                players.push({name: d.name, id: d.id});
                 broadcast({type: 'sync', players});
-                updateUIPanel();
-                // Herkesi birbiriyle eşle (Full Mesh)
+                updateGrid();
                 players.forEach(p => { if(p.id !== myId) peer.call(p.id, localStream); });
             }
-            if(data.type === 'sync') { players = data.players; updateUIPanel(); }
-            if(data.type === 'game_start') startClientGame(data);
-            if(data.type === 'turn') runTurn(data.index);
-            if(data.type === 'next_turn_req' && isHost) nextTurn();
-            if(data.type === 'voting') startVoting();
+            if(d.type === 'sync') { players = d.players; updateGrid(); }
+            if(d.type === 'start') launchGame(d);
+            if(d.type === 'turn') handleTurn(d.idx);
+            if(d.type === 'next_req' && isHost) nextTurn();
+            if(d.type === 'vote') showVoting();
         });
     }
 
-    function updateUIPanel() {
-        const grid = document.getElementById('mic-grid');
+    function updateGrid() {
+        const grid = document.getElementById('player-grid');
         grid.innerHTML = players.map(p => `
             <div class="p-box" id="box-${p.id}">
                 <div>👤 ${p.name}</div>
-                <button class="mic-btn m-on" id="btn-${p.id}" onclick="toggleMute('${p.id}')">SESİ KES</button>
+                <span class="mic-tag" id="tag-${p.id}" style="display:none;">🎤 KONUŞUYOR</span>
             </div>
         `).join('');
     }
 
-    function toggleMute(pid) {
-        const btn = document.getElementById(`btn-${pid}`);
-        if(pid === myId) {
-            localStream.getAudioTracks()[0].enabled = !localStream.getAudioTracks()[0].enabled;
-            btn.innerText = localStream.getAudioTracks()[0].enabled ? "SESİ KES" : "SESİ AÇ";
-            btn.className = "mic-btn " + (localStream.getAudioTracks()[0].enabled ? "m-on" : "m-off");
-        } else if(remoteAudios[pid]) {
-            remoteAudios[pid].muted = !remoteAudios[pid].muted;
-            btn.innerText = remoteAudios[pid].muted ? "DUYMA" : "SESİ KES";
-            btn.className = "mic-btn " + (remoteAudios[pid].muted ? "m-off" : "m-on");
-        }
+    function beginGame(mode) {
+        const pair = testWords[Math.floor(Math.random() * testWords.length)];
+        const spy = players[Math.floor(Math.random() * players.length)].name;
+        const data = {type: 'start', mode, pair, spy};
+        broadcast(data); launchGame(data);
     }
 
-    function startNewGame(mode) {
-        const pair = testHavuz[Math.floor(Math.random() * testHavuz.length)];
-        const spyName = players[Math.floor(Math.random() * players.length)].name;
-        const gameData = {type: 'game_start', mode, pair, spy: spyName};
-        broadcast(gameData);
-        startClientGame(gameData);
-    }
-
-    function startClientGame(data) {
+    function launchGame(d) {
         document.getElementById('screen-lobby').classList.add('hidden');
         document.getElementById('screen-game').classList.remove('hidden');
-        const isSpy = myName === data.spy;
+        const isSpy = myName === d.spy;
         document.getElementById('role-title').innerText = isSpy ? "KÖSTEBEKSİN" : "SİVİLSİN";
-        document.getElementById('word-display').innerText = isSpy ? (data.mode === 'katil' ? "KATİL" : data.pair[1]) : data.pair[0];
+        document.getElementById('word-display').innerText = isSpy ? (d.mode === 'katil' ? "KATİL" : d.pair[1]) : d.pair[0];
         
-        if(isHost) {
-            setTimeout(() => { 
-                currentSpeakerIndex = 0;
-                broadcast({type: 'turn', index: 0});
-                runTurn(0);
-            }, 5000); // 5 saniye rol görme süresi
-        }
+        if(isHost) setTimeout(() => { currentSpeakerIdx = 0; broadcast({type: 'turn', idx: 0}); handleTurn(0); }, 5000);
     }
 
-    function runTurn(index) {
-        currentSpeakerIndex = index;
+    function handleTurn(idx) {
+        currentSpeakerIdx = idx;
+        const speaker = players[idx];
         document.getElementById('discussion-area').classList.remove('hidden');
-        const speaker = players[index];
-        
-        // Konuşan oyuncunun kutusunu parlat
-        players.forEach(p => document.getElementById(`box-${p.id}`).classList.remove('p-active'));
-        document.getElementById(`box-${speaker.id}`).classList.add('p-active');
 
+        // GÖRSEL VE SESSEL YÖNETİM
+        players.forEach(p => {
+            const box = document.getElementById(`box-${p.id}`);
+            const tag = document.getElementById(`tag-${p.id}`);
+            box.classList.remove('p-active');
+            tag.style.display = 'none';
+            
+            // SESİ YÖNET: Sadece konuşan kişinin sesini aç, diğerlerini sustur
+            if(remoteStreams[p.id]) {
+                remoteStreams[p.id].muted = (p.id !== speaker.id);
+            }
+        });
+
+        document.getElementById(`box-${speaker.id}`).classList.add('p-active');
+        document.getElementById(`tag-${speaker.id}`).style.display = 'block';
         document.getElementById('pass-btn').style.display = (myId === speaker.id) ? "block" : "none";
-        
+
         let timeLeft = 30;
-        const display = document.getElementById('timer-display');
-        clearInterval(gameTimer);
-        display.innerText = timeLeft;
-        gameTimer = setInterval(() => {
-            timeLeft--; display.innerText = timeLeft;
-            if(timeLeft <= 0) { clearInterval(gameTimer); if(isHost) nextTurn(); }
+        const disp = document.getElementById('timer-display');
+        clearInterval(timer);
+        disp.innerText = timeLeft;
+        timer = setInterval(() => {
+            timeLeft--; disp.innerText = timeLeft;
+            if(timeLeft <= 0) { clearInterval(timer); if(isHost) nextTurn(); }
         }, 1000);
     }
 
-    function requestNextTurn() {
-        if(isHost) nextTurn();
-        else connections[joinId].send({type: 'next_turn_req'});
-    }
+    function requestNext() { if(isHost) nextTurn(); else connections[joinId].send({type: 'next_req'}); }
 
     function nextTurn() {
-        currentSpeakerIndex++;
-        if(currentSpeakerIndex < players.length) {
-            broadcast({type: 'turn', index: currentSpeakerIndex});
-            runTurn(currentSpeakerIndex);
+        currentSpeakerIdx++;
+        if(currentSpeakerIdx < players.length) {
+            broadcast({type: 'turn', idx: currentSpeakerIdx});
+            handleTurn(currentSpeakerIdx);
         } else {
-            broadcast({type: 'voting'});
-            startVoting();
+            broadcast({type: 'vote'});
+            showVoting();
         }
     }
 
-    function startVoting() {
-        clearInterval(gameTimer);
+    function showVoting() {
+        clearInterval(timer);
         document.getElementById('discussion-area').classList.add('hidden');
         document.getElementById('vote-area').classList.remove('hidden');
+        // Oylamada herkesin sesini aç (isteğe bağlı)
+        Object.values(remoteStreams).forEach(a => a.muted = false);
         const vDiv = document.getElementById('vote-btns');
-        vDiv.innerHTML = players.map(p => `
-            <button class="btn btn-gafil" onclick="this.disabled=true; this.innerText='OY VERİLDİ'">${p.name}</button>
-        `).join('') + `<button class="btn btn-red" onclick="this.disabled=true;">PAS</button>`;
+        vDiv.innerHTML = players.map(p => `<button class="btn btn-gafil" onclick="this.disabled=true;">${p.name}</button>`).join('') + `<button class="btn btn-red">PAS</button>`;
     }
 
-    function broadcast(data) {
-        Object.values(connections).forEach(c => c.send(data));
-    }
-
-    function toggleWordDisplay() {
-        const wd = document.getElementById('word-display');
-        wd.classList.toggle('hidden');
-    }
+    function broadcast(d) { Object.values(connections).forEach(c => c.send(d)); }
+    function toggleWord() { document.getElementById('word-display').classList.toggle('hidden'); }
 </script>
 </body>
 </html>
