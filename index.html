@@ -37,6 +37,9 @@
         #timer-display { font-size: 2.8em; color: var(--red); font-weight: 800; margin: 10px 0; background: #1a0000; border-radius: 60px; width: 100px; margin-left: auto; margin-right: auto; padding: 10px; }
         .flex-btns { display: flex; gap: 10px; margin-top: 8px; }
         .result-highlight { background: #222; padding: 12px; border-radius: 20px; margin: 8px 0; }
+        .copy-area { display: flex; gap: 8px; align-items: center; background: #0a0a0a; padding: 5px 10px; border-radius: 40px; }
+        .copy-area input { flex: 1; background: transparent; border: none; color: var(--gold); font-size: 0.6em; padding: 8px 0; margin: 0; text-align: left; }
+        .copy-btn { background: var(--gold); color: #000; border: none; border-radius: 30px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.8em; }
     </style>
 </head>
 <body>
@@ -58,8 +61,11 @@
 
         <div id="lobby-area" class="hidden">
             <div id="share-info" style="background:#1a1a1a; padding: 10px; border-radius: 20px; margin-bottom: 12px;">
-                <p style="font-size:0.7em; margin:2px 0; color:var(--gold);">✨ LİNKİ PAYLAŞ ✨</p>
-                <p id="share-link" style="font-size:0.6em; word-break:break-all; background:#000; padding:6px; border-radius:20px;"></p>
+                <p style="font-size:0.7em; margin:2px 0 8px 0; color:var(--gold);">✨ LİNKİ PAYLAŞ ✨</p>
+                <div class="copy-area">
+                    <input type="text" id="share-link" readonly value="">
+                    <button class="copy-btn" onclick="kopyalaLink()">📋 KOPYALA</button>
+                </div>
             </div>
             <div id="player-list"></div>
             <div id="host-controls" class="hidden" style="margin-top: 15px;">
@@ -114,7 +120,7 @@
 </div>
 
 <script>
-    // ---------- KELİME HAVUZU (ORİJİNAL 405 İKİLİDEN KISALTILMIŞ ÖRNEK, FONKSİYON ÇALIŞIR) ----------
+    // ---------- KELİME HAVUZU ----------
     const kelimeHavuzu = [
         ["Kredi Kartı", "Nakit Para"], ["Metrobüs", "Metro"], ["Gök Kuşağı", "Kuzey Işıkları"], ["Yapay Zeka", "İnsan Beyni"], 
         ["Haluk Bilginer", "Şener Şen"], ["Tavuk Döner", "Et Döner"], ["Klima", "Vantilatör"], ["Türk Kahvesi", "Filtre Kahve"],
@@ -129,9 +135,8 @@
 
     // OYUN DURUMU
     let peer, myId, myName, localStream, isHost = false;
-    let players = [];            // { name, score, role, word, alive, mic }
-    let connections = {};       // isim -> data connection
-    let calls = {};
+    let players = [];
+    let connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, kelimeSivil: "", kelimeKostebek: "", playersSnapshot: [], votes: {}, playerVotes: {}, pasCount: 0, currentVoterIndex: 0, gameActive: false, roundOver: false, pendingScores: {} };
     let discussionActive = false, discussionInterval = null, currentSpeakerIdx = 0;
     let gameRevealIndex = 0;
@@ -152,10 +157,18 @@
             document.getElementById('lobby-area').classList.remove('hidden');
             document.getElementById('host-controls').classList.remove('hidden');
             const link = window.location.href.split('?')[0] + "?join=" + myId;
-            document.getElementById('share-link').innerText = link;
+            document.getElementById('share-link').value = link;
             players = [{ name: myName, score: 0, role: "", word: "", alive: true, mic: true }];
             renderLobby();
         }).catch(e => alert("Mikrofon izni gerekli!"));
+    }
+
+    function kopyalaLink() {
+        let linkInput = document.getElementById('share-link');
+        linkInput.select();
+        linkInput.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(linkInput.value);
+        alert("✅ Link kopyalandı!");
     }
 
     function initPeer(id) {
@@ -194,6 +207,7 @@
     }
 
     function refreshPlayers() { if(isHost) { broadcast({ type: 'sync', players: players.map(p => ({ name:p.name, score:p.score, alive:p.alive, mic:p.mic })) }); renderLobby(); } }
+    
     function renderLobby() {
         const sorted = [...players].sort((a,b) => b.score - a.score);
         const container = document.getElementById('player-list');
@@ -292,7 +306,7 @@
     
     function showGameUI() {
         let me = currentGame.playersSnapshot.find(p => p.name === myName);
-        document.getElementById('role-title').innerText = me.role === "KÖSTEBEK" ? "🔻 KÖSTEBEKSİN!" : "🛡️ SİVİLSİN";
+        document.getElementById('role-title').innerHTML = me.role === "KÖSTEBEK" ? "🔻 KÖSTEBEKSİN!" : "🛡️ SİVİLSİN";
         document.getElementById('game-word-box').innerText = me.word;
         document.getElementById('game-word-box').classList.remove('hidden');
         document.getElementById('toggle-word-btn').innerText = "GİZLE";
