@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK ONLINE | V5 | M. Rıdvan Saygın</title>
+    <title>GAFİL KÖSTEBEK ONLINE | V6 | M. Rıdvan Saygın</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -41,6 +41,7 @@
         .copy-btn { background: var(--gold); color: #000; border: none; border-radius: 30px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.8em; }
         .word-counter { background: #222; padding: 5px 10px; border-radius: 20px; font-size: 0.8em; margin-bottom: 10px; color: var(--gold); }
         .round-settings { background: #1a1a1a; padding: 10px; border-radius: 20px; margin: 10px 0; }
+        .waiting-text { color: var(--gold); font-size: 1.2em; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -50,7 +51,7 @@
         <div class="marquee-rules">
             <div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. 3 pas olursa köstebek kaçar. Herkes sözü devredebilir. 🎲</div>
         </div>
-        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[ONLINE V5]</span></h1>
+        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[ONLINE V6]</span></h1>
         <div class="author">M. RIDVAN SAYGIN | SESLİ ODA</div>
         
         <div id="setup-area">
@@ -87,10 +88,13 @@
     </div>
 
     <div id="screen-reveal" class="hidden">
-        <h2 id="current-player-name" style="color:var(--gold);">---</h2>
-        <div id="word-display" class="word-box hidden">---</div>
-        <button id="revealBtn" class="btn btn-main" onclick="handleReveal()">👁️ GÖR</button>
-        <button id="changeBtn" class="btn btn-change hidden" onclick="changeWord()">🔄 KELİMEYİ DEĞİŞTİR</button>
+        <div id="host-reveal-area">
+            <h2 id="current-player-name" style="color:var(--gold);">---</h2>
+            <div id="word-display" class="word-box hidden">---</div>
+            <button id="revealBtn" class="btn btn-main" onclick="handleReveal()">👁️ GÖR</button>
+            <button id="changeBtn" class="btn btn-change" onclick="changeWord()">🔄 KELİMEYİ DEĞİŞTİR</button>
+            <div id="waiting-message" class="waiting-text hidden">🎭 Lider kelimeyi onaylıyor...</div>
+        </div>
     </div>
 
     <div id="screen-game" class="hidden">
@@ -144,6 +148,8 @@
     let discussionActive = false, currentSpeakerIdx = 0;
     let gameRevealIndex = 0;
     let kelimePair = null;
+    let revealApproved = false;  // Lider kelimeyi onayladı mı?
+    let currentGameData = null;   // Oyun verilerini sakla
 
     async function getMedia() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
 
@@ -201,11 +207,14 @@
             }
         } 
         else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); }
-        else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
+        else if(d.type === 'start_game') { currentGameData = d.gameData; startGameFromHost(d.gameData); }
+        else if(d.type === 'reveal_approved') { if(!isHost) startRevealForPlayers(); }
+        else if(d.type === 'reveal_next') { if(!isHost) showNextPlayerWord(d.index); }
+        else if(d.type === 'finish_reveal') { if(!isHost) finishRevealAndStartGame(); }
         else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { resetForNextRound(); }
-        else if(d.type === 'request_next_speaker') { if(isHost) hostNextSpeaker(); else if(discussionActive) hostNextSpeaker(); }
+        else if(d.type === 'request_next_speaker') { if(isHost && discussionActive && currentSpeakerIdx < currentGame.discussionOrder.length && currentGame.discussionOrder[currentSpeakerIdx] === d.speakerName) hostNextSpeaker(); }
         else if(d.type === 'disc_start') { if(!isHost) runDiscussionClient(d.idx); }
         else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
     }
@@ -265,49 +274,38 @@
 
     function broadcast(data) { if(isHost) Object.values(connections).forEach(c => c.send(data)); }
 
-    function oyunuBaslat(mode) {
-        if(players.length < 3) return;
-        let totalRounds = parseInt(document.getElementById('roundCountSelect').value);
-        currentGame.totalRounds = totalRounds;
-        currentGame.currentRound = 1;
-        startNewRound(mode);
-    }
-
     // Rastgele konuşma sırası oluştur (Katil modunda köstebek ilk konuşamaz)
     function createRandomDiscussionOrder(playersList, mode, spyNames) {
         let playerNames = playersList.map(p => p.name);
         if(mode === 'katil' && spyNames.length > 0) {
-            // Köstebekleri bul
             let spies = playerNames.filter(name => spyNames.includes(name));
             let nonSpies = playerNames.filter(name => !spyNames.includes(name));
-            
-            // Köstebekleri karıştır
             for(let i=spies.length - 1; i>0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [spies[i], spies[j]] = [spies[j], spies[i]];
             }
-            // Sivilleri karıştır
             for(let i=nonSpies.length - 1; i>0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [nonSpies[i], nonSpies[j]] = [nonSpies[j], nonSpies[i]];
             }
-            // Siviller önce gelir (köstebekler ilk konuşamaz)
             let order = [...nonSpies, ...spies];
-            console.log("🗣️ Katil modu konuşma sırası (köstebekler sonlarda):", order);
             return order;
         } else {
-            // Gafil modu veya normal - tamamen rastgele
             let order = [...playerNames];
             for(let i=order.length - 1; i>0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [order[i], order[j]] = [order[j], order[i]];
             }
-            console.log("🗣️ Gafil modu konuşma sırası (tamamen rastgele):", order);
             return order;
         }
     }
 
-    function startNewRound(mode) {
+    function oyunuBaslat(mode) {
+        if(players.length < 3) return;
+        let totalRounds = parseInt(document.getElementById('roundCountSelect').value);
+        currentGame.totalRounds = totalRounds;
+        currentGame.currentRound = 1;
+        
         let pairIndex = Math.floor(Math.random() * fullHavuz.length);
         let pair = fullHavuz[pairIndex];
         if(!usedWords.includes(pair[0])) usedWords.push(pair[0]);
@@ -319,16 +317,10 @@
         let spyNames = [];
         for(let i=0;i<mCount;i++) spyNames.push(shuffled[i].name);
         
-        // Rastgele konuşma sırasını oluştur
         let discussionOrder = createRandomDiscussionOrder(players, mode, spyNames);
         
-        console.log("🎮 YENİ TUR - Mod:", mode);
-        console.log("🎮 Köstebekler:", spyNames);
-        console.log("🎮 Konuşma sırası:", discussionOrder);
-        console.log("🎮 Sivil kelime:", pair[0]);
-        console.log("🎮 Köstebek kelimesi (gafil):", pair[1]);
-        
         const gameData = { mode, pair, spyNames, discussionOrder, playersList: players.map(p => ({ name:p.name, score:p.score, alive:true })), currentRound: currentGame.currentRound, totalRounds: currentGame.totalRounds };
+        
         broadcast({ type: 'start_game', gameData });
         startGameFromHost(gameData);
     }
@@ -353,7 +345,6 @@
         
         for(let p of currentGame.playersSnapshot) {
             p.role = currentGame.spyNames.includes(p.name) ? "KÖSTEBEK" : "SİVİL";
-            
             if(p.role === "SİVİL") {
                 p.word = gameData.pair[0];
             } else {
@@ -363,7 +354,6 @@
                     p.word = gameData.pair[1];
                 }
             }
-            console.log("📝", p.name, "- Rol:", p.role, "- Kelime:", p.word);
         }
         
         currentGame.roundOver = false;
@@ -371,42 +361,117 @@
         currentGame.playerVotes = {};
         currentGame.pasCount = 0;
         currentGame.pendingScores = {};
+        
+        // Lider kendi kelimesini gösterir
         gameRevealIndex = 0;
-        showRevealForPlayer();
+        revealApproved = false;
+        
+        if(isHost) {
+            // Lider sadece kendi kelimesini görür
+            let leaderData = currentGame.playersSnapshot.find(p => p.name === myName);
+            document.getElementById('current-player-name').innerText = leaderData.name;
+            document.getElementById('word-display').innerText = leaderData.word;
+            document.getElementById('word-display').classList.add('hidden');
+            document.getElementById('revealBtn').innerText = "GÖR";
+            document.getElementById('changeBtn').classList.remove('hidden');
+            document.getElementById('waiting-message').classList.add('hidden');
+        } else {
+            // Diğer oyuncular bekleme modunda
+            document.getElementById('current-player-name').innerText = myName;
+            document.getElementById('word-display').innerText = "???";
+            document.getElementById('word-display').classList.add('hidden');
+            document.getElementById('revealBtn').classList.add('hidden');
+            document.getElementById('changeBtn').classList.add('hidden');
+            document.getElementById('waiting-message').classList.remove('hidden');
+        }
     }
-
-    function showRevealForPlayer() {
-        if(gameRevealIndex >= currentGame.playersSnapshot.length) { finishRevealStartGame(); return; }
-        let p = currentGame.playersSnapshot[gameRevealIndex];
+    
+    function startRevealForPlayers() {
+        // Diğer oyunculara kelime gösterme başlar
+        gameRevealIndex = 0;
+        showNextPlayerWord(0);
+    }
+    
+    function showNextPlayerWord(index) {
+        if(index >= currentGame.playersSnapshot.length) {
+            broadcast({ type: 'finish_reveal' });
+            finishRevealAndStartGame();
+            return;
+        }
+        
+        let p = currentGame.playersSnapshot[index];
+        if(p.name === myName) {
+            // Kendi sırası gelince atla (zaten gördü)
+            showNextPlayerWord(index + 1);
+            return;
+        }
+        
         document.getElementById('current-player-name').innerText = p.name;
-        let displayWord = p.word;
-        document.getElementById('word-display').innerText = displayWord;
+        document.getElementById('word-display').innerText = p.word;
         document.getElementById('word-display').classList.add('hidden');
         document.getElementById('revealBtn').innerText = "GÖR";
-        document.getElementById('changeBtn').classList.toggle('hidden', !isHost || gameRevealIndex !== 0);
+        document.getElementById('revealBtn').classList.remove('hidden');
+        document.getElementById('changeBtn').classList.add('hidden');
+        document.getElementById('waiting-message').classList.add('hidden');
+        
+        // Geçici olarak reveal handler'ı değiştir
+        window.tempRevealHandler = function() {
+            let disp = document.getElementById('word-display');
+            if(disp.classList.contains('hidden')) {
+                disp.classList.remove('hidden');
+                document.getElementById('revealBtn').innerText = "GİZLE";
+            } else {
+                document.getElementById('revealBtn').classList.add('hidden');
+                broadcast({ type: 'reveal_next', index: index + 1 });
+                showNextPlayerWord(index + 1);
+            }
+        };
+        document.getElementById('revealBtn').onclick = window.tempRevealHandler;
     }
-
+    
     function handleReveal() {
-        let disp = document.getElementById('word-display');
-        if(disp.classList.contains('hidden')) { disp.classList.remove('hidden'); document.getElementById('revealBtn').innerText = "GİZLE"; }
-        else { gameRevealIndex++; showRevealForPlayer(); }
+        if(isHost) {
+            let disp = document.getElementById('word-display');
+            if(disp.classList.contains('hidden')) {
+                disp.classList.remove('hidden');
+                document.getElementById('revealBtn').innerText = "GİZLE";
+            } else {
+                // Lider kelimeyi onayladı
+                revealApproved = true;
+                document.getElementById('revealBtn').classList.add('hidden');
+                document.getElementById('changeBtn').classList.add('hidden');
+                document.getElementById('waiting-message').classList.remove('hidden');
+                document.getElementById('word-display').classList.add('hidden');
+                document.getElementById('current-player-name').innerText = "TÜM OYUNCULAR";
+                document.getElementById('word-display').innerText = "Kelime dağıtılıyor...";
+                
+                broadcast({ type: 'reveal_approved' });
+                startRevealForPlayers();
+            }
+        }
     }
     
-    function changeWord() { 
-        let newPair = fullHavuz[Math.floor(Math.random() * fullHavuz.length)]; 
-        kelimePair = newPair; 
-        for(let p of currentGame.playersSnapshot) { 
-            if(p.role === "SİVİL") p.word = newPair[0]; 
-            else p.word = (currentGame.mode === 'katil') ? "???" : newPair[1]; 
-        } 
-        showRevealForPlayer(); 
+    function changeWord() {
+        if(isHost && !revealApproved) {
+            let newPair = fullHavuz[Math.floor(Math.random() * fullHavuz.length)];
+            kelimePair = newPair;
+            for(let p of currentGame.playersSnapshot) {
+                if(p.role === "SİVİL") p.word = newPair[0];
+                else p.word = (currentGame.mode === 'katil') ? "???" : newPair[1];
+            }
+            // Liderin kendi kelimesini güncelle
+            let leaderData = currentGame.playersSnapshot.find(p => p.name === myName);
+            document.getElementById('word-display').innerText = leaderData.word;
+            document.getElementById('word-display').classList.add('hidden');
+            document.getElementById('revealBtn').innerText = "GÖR";
+        }
     }
     
-    function finishRevealStartGame() { 
-        document.getElementById('screen-reveal').classList.add('hidden'); 
-        document.getElementById('screen-game').classList.remove('hidden'); 
+    function finishRevealAndStartGame() {
+        document.getElementById('screen-reveal').classList.add('hidden');
+        document.getElementById('screen-game').classList.remove('hidden');
         document.getElementById('wordCounter').innerHTML = `📖 Kelime ${currentGame.currentRound} / ${currentGame.totalRounds}`;
-        showGameUI(); 
+        showGameUI();
     }
     
     function showGameUI() {
@@ -434,7 +499,6 @@
     
     function runDiscussion(idx) {
         if(idx >= currentGame.discussionOrder.length) {
-            // Konuşma bitti
             discussionActive = false;
             document.getElementById('discussion-area').classList.add('hidden');
             document.getElementById('vote-phase-btn-area').classList.remove('hidden');
@@ -446,7 +510,14 @@
         document.getElementById('discussion-area').classList.remove('hidden');
         let speakerName = currentGame.discussionOrder[idx];
         document.getElementById('speaker-name').innerHTML = "🎤 " + speakerName;
-        document.getElementById('end-turn-btn').style.display = "block";
+        
+        // Sadece konuşan kişi veya lider sözü devredebilir
+        if(speakerName === myName || isHost) {
+            document.getElementById('end-turn-btn').style.display = "block";
+        } else {
+            document.getElementById('end-turn-btn').style.display = "none";
+        }
+        
         let t = 30;
         let timerDiv = document.getElementById('timer-display');
         clearInterval(window.discTimer);
@@ -465,8 +536,15 @@
     
     function requestNextSpeaker() {
         clearInterval(window.discTimer);
-        if(isHost) hostNextSpeaker();
-        else { let conn = Object.values(connections)[0]; if(conn) conn.send({ type: 'request_next_speaker' }); }
+        if(isHost) {
+            hostNextSpeaker();
+        } else {
+            let currentSpeaker = currentGame.discussionOrder[currentSpeakerIdx];
+            if(currentSpeaker === myName) {
+                let conn = Object.values(connections)[0];
+                if(conn) conn.send({ type: 'request_next_speaker', speakerName: myName });
+            }
+        }
     }
     
     function hostNextSpeaker() {
@@ -478,7 +556,7 @@
             discussionActive = false;
             document.getElementById('discussion-area').classList.add('hidden');
             document.getElementById('vote-phase-btn-area').classList.remove('hidden');
-            if(isHost) broadcast({ type: 'force_vote' });
+            broadcast({ type: 'force_vote' });
         }
     }
     
@@ -583,7 +661,7 @@
             showFinalGameResults();
         } else {
             currentGame.currentRound++;
-            startNewRound(currentGame.mode);
+            oyunuBaslat(currentGame.mode);
         }
     }
     
@@ -600,7 +678,7 @@
         currentGame.roundOver = true;
     }
     
-    function resetForNextRound() { startNewRound(currentGame.mode); }
+    function resetForNextRound() { oyunuBaslat(currentGame.mode); }
     
     function resetToLobby() { 
         document.getElementById('screen-game').classList.add('hidden');
