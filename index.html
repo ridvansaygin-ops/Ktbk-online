@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK ONLINE | V8 | M. Rıdvan Saygın</title>
+    <title>GAFİL KÖSTEBEK ONLINE | V9 | M. Rıdvan Saygın</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -21,21 +21,23 @@
         .btn-gafil { background: var(--gold); color: #000; }
         .btn-katil { background: var(--red); color: #fff; }
         .btn-exit { background: #330000; color: #ff8888; border: 1px solid #800; font-size: 0.8em; padding: 8px 12px; }
-        .player-card { background: #151515; padding: 12px 15px; margin: 8px 0; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--gray); }
-        .player-info { display: flex; align-items: center; gap: 8px; font-size: 0.95em; }
+        .player-card { background: #151515; padding: 12px 15px; margin: 8px 0; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--gray); flex-wrap: wrap; gap: 8px; }
+        .player-info { display: flex; align-items: center; gap: 8px; font-size: 0.95em; flex-wrap: wrap; }
         .mic-btn { background: var(--gray); border: none; color: white; padding: 5px 12px; border-radius: 30px; font-size: 0.7em; cursor: pointer; }
         .mic-on { background: #2e7d32; }
         .mic-off { background: var(--red); }
-        .exit-btn { background: #800; color: white; border: none; border-radius: 20px; padding: 5px 10px; font-size: 0.7em; cursor: pointer; margin-left: 5px; }
+        .volume-btn { background: #444; border: none; color: white; padding: 5px 10px; border-radius: 30px; font-size: 0.65em; cursor: pointer; margin-left: 5px; }
+        .volume-muted { background: #800; }
+        .exit-btn { background: #800; color: white; border: none; border-radius: 20px; padding: 5px 10px; font-size: 0.7em; cursor: pointer; }
         .rank-0 { border-left-color: var(--gold) !important; background: #1f1a00; }
         .rank-1 { border-left-color: var(--silver) !important; }
         .rank-2 { border-left-color: var(--bronze) !important; }
         .hidden { display: none !important; }
         .word-box { background: #0f0f0f; border: 3px dashed #555; padding: 40px 10px; font-size: 2.2em; font-weight: bold; margin: 20px 0; border-radius: 28px; color: var(--gold); }
-        .vote-item { background: #1a1a1a; padding: 14px; margin: 8px 0; border-radius: 50px; border: 1px solid #333; cursor: pointer; }
+        .vote-item { background: #1a1a1a; padding: 14px; margin: 8px 0; border-radius: 50px; border: 1px solid #333; cursor: pointer; transition: 0.1s; }
         .vote-item:active { background: #333; }
         .stats-panel { display: flex; justify-content: space-between; background: #0c0c0c; padding: 6px 12px; border-radius: 50px; margin-top: 12px; font-size: 0.7em; color: #aaa; }
-        #timer-display { font-size: 2.8em; color: var(--red); font-weight: 800; margin: 10px 0; background: #1a0000; border-radius: 60px; width: 100px; margin: 10px auto; padding: 10px; }
+        #timer-display, #vote-timer { font-size: 2.5em; color: var(--red); font-weight: 800; margin: 10px 0; background: #1a0000; border-radius: 60px; width: 100px; margin: 10px auto; padding: 10px; }
         .copy-area { display: flex; gap: 8px; background: #0a0a0a; padding: 5px 10px; border-radius: 40px; }
         .copy-area input { flex: 1; background: transparent; border: none; color: var(--gold); font-size: 0.6em; padding: 8px 0; margin: 0; text-align: left; }
         .copy-btn { background: var(--gold); color: #000; border: none; border-radius: 30px; padding: 6px 12px; cursor: pointer; }
@@ -43,14 +45,16 @@
         .round-settings { background: #1a1a1a; padding: 10px; border-radius: 20px; margin: 10px 0; }
         .waiting-text { color: var(--gold); font-size: 1.2em; margin: 20px 0; }
         .speaker-indicator { background: var(--green); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7em; display: inline-block; margin-left: 8px; }
+        .vote-timer-area { text-align: center; margin: 10px 0; }
+        .vote-countdown { font-size: 0.8em; color: #aaa; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="screen-lobby">
-        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Sadece konuşanın mikrofonu açılır, sözü sadece konuşan devredebilir. 🎲</div></div>
-        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V8]</span></h1>
+        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Oylama 12 saniye, oy vermeyen PAS sayılır. Herkes istemediği oyuncuyu susturabilir. Katil modunda köstebek ilk konuşamaz! 🎲</div></div>
+        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V9]</span></h1>
         <div class="author">M. RIDVAN SAYGIN | SESLİ ODA</div>
         
         <div id="setup-area">
@@ -112,6 +116,10 @@
     <div id="screen-vote" class="hidden">
         <div id="voter-title" style="margin-bottom:12px; font-size:1.2rem; color:var(--gold);">---</div>
         <div id="vote-options"></div>
+        <div class="vote-timer-area">
+            <div id="vote-timer">12</div>
+            <div class="vote-countdown">saniye içinde oy vermezsen PAS sayılırsın</div>
+        </div>
         <button class="btn btn-main" style="background:#2c2c2c; color:#f66;" onclick="submitVote('PAS')">⏸️ PAS GEÇ</button>
         <button class="btn btn-exit" onclick="exitToLobby()">🚪 OYUNDAN ÇIK</button>
     </div>
@@ -136,32 +144,47 @@
     let peer, myId, myName, localStream, isHost = false;
     let players = [];
     let connections = {};
-    let remoteStreams = {};  // Uzaktaki oyuncuların ses akışlarını tut
+    let remoteStreams = {};
+    let mutedPlayers = {};  // Oyuncunun susturduğu kişiler
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, pasCount: 0, currentVoterIndex: 0, roundOver: false, pendingScores: {}, currentRound: 0, totalRounds: 5, discussionOrder: [] };
     let discussionActive = false, currentSpeakerIdx = 0;
     let gameRevealIndex = 0;
     let revealApproved = false;
     let currentSpeakerName = "";
+    let voteTimer = null;
+    let voteTimeout = null;
 
     async function getMedia() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
 
-    // Tüm uzak sesleri kapat (sadece belirtilen konuşmacının sesini açar)
     function muteAllExcept(speakerName) {
         for(let name in remoteStreams) {
+            let isMutedByMe = mutedPlayers[name] === true;
+            let shouldBeMuted = (name !== speakerName) || isMutedByMe;
             if(remoteStreams[name].audioElement) {
-                remoteStreams[name].audioElement.muted = (name !== speakerName);
+                remoteStreams[name].audioElement.muted = shouldBeMuted;
             }
         }
     }
     
-    // Kendi mikrofonumu kontrol et (konuşmacı isem aç, değilse kapat)
+    function updateRemoteMute(remoteName, isMuted) {
+        if(remoteStreams[remoteName] && remoteStreams[remoteName].audioElement) {
+            remoteStreams[remoteName].audioElement.muted = isMuted;
+        }
+    }
+    
+    function toggleMutePlayer(targetName) {
+        if(targetName === myName) return;
+        mutedPlayers[targetName] = !mutedPlayers[targetName];
+        updateRemoteMute(targetName, mutedPlayers[targetName]);
+        renderLobby();
+    }
+    
     function setMyMic(isSpeaker) {
         if(localStream) {
             localStream.getAudioTracks().forEach(track => {
                 track.enabled = isSpeaker;
             });
         }
-        // Lobi ekranında mikrofon butonunu güncelle
         let p = players.find(x => x.name === myName);
         if(p) {
             p.mic = isSpeaker;
@@ -183,7 +206,7 @@
             document.getElementById('share-link').value = link;
             players = [{ name: myName, score: 0, role: "", word: "", alive: true, mic: true }];
             renderLobby();
-            setMyMic(false); // Başlangıçta mikrofon kapalı
+            setMyMic(false);
         }).catch(e => alert("Mikrofon izni gerekli!"));
     }
 
@@ -213,6 +236,7 @@
                 let remoteName = call.metadata?.name || "unknown";
                 remoteStreams[remoteName] = { stream: s, audioElement: audio };
                 audio.play();
+                if(mutedPlayers[remoteName]) audio.muted = true;
                 muteAllExcept(currentSpeakerName);
             });
         });
@@ -232,6 +256,7 @@
                     audio.autoplay = true;
                     remoteStreams[d.name] = { stream: s, audioElement: audio };
                     audio.play();
+                    if(mutedPlayers[d.name]) audio.muted = true;
                     muteAllExcept(currentSpeakerName);
                 });
             }
@@ -270,10 +295,13 @@
             let rankClass = idx===0?'rank-0': idx===1?'rank-1': idx===2?'rank-2':'';
             let micStatus = p.mic ? 'mic-on' : 'mic-off';
             let micText = p.mic ? '🎙️ AÇIK' : '🔇 KAPALI';
+            let volumeBtnText = mutedPlayers[p.name] ? '🔇 SUSTURULDU' : '🔊 SUSTUR';
+            let volumeBtnClass = mutedPlayers[p.name] ? 'volume-btn volume-muted' : 'volume-btn';
             return `<div class="player-card ${rankClass}">
                         <div class="player-info">👤 <b>${p.name}</b> <span style="background:#222; padding:2px 8px; border-radius:40px;">🎯 ${p.score}</span></div>
                         <div>
                             <button class="mic-btn ${micStatus}" style="cursor:default;">${micText}</button>
+                            ${p.name !== myName ? `<button class="${volumeBtnClass}" onclick="toggleMutePlayer('${p.name}')">${volumeBtnText}</button>` : ''}
                             <button class="exit-btn" onclick="removePlayer('${p.name}')">✖️</button>
                         </div>
                     </div>`;
@@ -288,6 +316,7 @@
             players = players.filter(p => p.name !== name);
             if(connections[name]) { connections[name].close(); delete connections[name]; }
             if(remoteStreams[name]) { remoteStreams[name].audioElement?.pause(); delete remoteStreams[name]; }
+            delete mutedPlayers[name];
             broadcast({ type: 'sync', players: players.map(p => ({ name:p.name, score:p.score, alive:p.alive, mic:p.mic })) });
             renderLobby();
         } else if(name === myName) resetToLobby();
@@ -319,6 +348,7 @@
                 let remoteName = call.metadata?.name || "unknown";
                 remoteStreams[remoteName] = { stream: s, audioElement: audio };
                 audio.play();
+                if(mutedPlayers[remoteName]) audio.muted = true;
                 muteAllExcept(currentSpeakerName);
             });
         });
@@ -326,6 +356,7 @@
 
     function broadcast(data) { if(isHost) Object.values(connections).forEach(c => c.send(data)); }
 
+    // Katil modunda köstebek ilk konuşamaz!
     function createRandomDiscussionOrder(playersList, mode, spyNames) {
         let playerNames = playersList.map(p => p.name);
         if(mode === 'katil' && spyNames.length > 0) {
@@ -333,10 +364,14 @@
             let nonSpies = playerNames.filter(name => !spyNames.includes(name));
             for(let i=spies.length - 1; i>0; i--) { const j = Math.floor(Math.random() * (i + 1)); [spies[i], spies[j]] = [spies[j], spies[i]]; }
             for(let i=nonSpies.length - 1; i>0; i--) { const j = Math.floor(Math.random() * (i + 1)); [nonSpies[i], nonSpies[j]] = [nonSpies[j], nonSpies[i]]; }
-            return [...nonSpies, ...spies];
+            // Siviller önce, köstebekler sonra (köstebek ilk konuşamaz)
+            let order = [...nonSpies, ...spies];
+            console.log("🗣️ Katil modu - Köstebekler ilk konuşamaz:", order);
+            return order;
         } else {
             let order = [...playerNames];
             for(let i=order.length - 1; i>0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+            console.log("🗣️ Gafil modu - Tamamen rastgele:", order);
             return order;
         }
     }
@@ -535,7 +570,6 @@
         document.getElementById('discussion-area').classList.remove('hidden');
         document.getElementById('speaker-name').innerHTML = "🎤 " + speakerName + ' <span class="speaker-indicator">KONUŞUYOR</span>';
         
-        // Sadece konuşan kişi sözü devredebilir
         if(speakerName === myName) {
             document.getElementById('end-turn-btn').style.display = "block";
             setMyMic(true);
@@ -544,7 +578,6 @@
             setMyMic(false);
         }
         
-        // Sadece konuşanın sesi duyulsun
         muteAllExcept(speakerName);
         
         let t = 30;
@@ -608,14 +641,34 @@
     
     function renderVoteUI() {
         let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
-        if(currentGame.currentVoterIndex >= alivePlayers.length) { calculateResults(); return; }
+        if(currentGame.currentVoterIndex >= alivePlayers.length) { 
+            if(voteTimer) clearInterval(voteTimer);
+            calculateResults(); 
+            return; 
+        }
         let voter = alivePlayers[currentGame.currentVoterIndex];
         document.getElementById('voter-title').innerHTML = `🗳️ SIRA: ${voter.name}`;
         let candidates = alivePlayers.filter(p => p.name !== voter.name);
         document.getElementById('vote-options').innerHTML = candidates.map(p => `<div class="vote-item" onclick="submitVote('${p.name}')">🔸 ${p.name}</div>`).join('');
+        
+        // 12 saniye oylama süresi başlat
+        if(voteTimer) clearInterval(voteTimer);
+        let timeLeft = 12;
+        let timerDiv = document.getElementById('vote-timer');
+        timerDiv.innerText = timeLeft;
+        voteTimer = setInterval(() => {
+            timeLeft--;
+            timerDiv.innerText = timeLeft;
+            if(timeLeft <= 0) {
+                clearInterval(voteTimer);
+                // Süre doldu, PAS oyu ver
+                submitVote('PAS');
+            }
+        }, 1000);
     }
     
     function submitVote(target) {
+        if(voteTimer) clearInterval(voteTimer);
         let alive = currentGame.playersSnapshot.filter(p => p.alive);
         let voter = alive[currentGame.currentVoterIndex];
         if(target === 'PAS') { currentGame.pasCount++; currentGame.playerVotes[voter.name] = 'PAS'; }
