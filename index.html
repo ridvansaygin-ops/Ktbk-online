@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V20 | KURALLI</title>
+    <title>GAFİL KÖSTEBEK | V20 | IPHONE DÜZELTME</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -42,7 +42,6 @@
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
-            <!-- KURALLAR BUTON ALTINDA -->
             <div class="rule-box">
                 <p>🗣️ <strong>İsmi yazan kişi konuşur, sonra sözü devreder.</strong></p>
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
@@ -115,7 +114,7 @@
 </div>
 
 <script>
-      // ======================= PEERJS BAĞLANTI =======================
+        // ======================= PEERJS BAĞLANTI (iPhone için secure:true) =======================
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -126,7 +125,8 @@
         if(!myName || myName.length<2) { alert("Geçerli isim"); return; }
         isHost = true;
         myId = "KST-"+Math.random().toString(36).substr(2,6).toUpperCase();
-        peer = new Peer(myId);
+        // iPhone için secure:true eklendi
+        peer = new Peer(myId, { secure: true });
         peer.on('connection', c => { c.on('data', d => handleDataMessage(d, c)); c.on('close', () => refreshPlayers()); });
         document.getElementById('setup-area').classList.add('hidden');
         document.getElementById('lobby-area').classList.remove('hidden');
@@ -185,7 +185,8 @@
     function odayaKatil(id) {
         myName = document.getElementById('nameInput').value.trim();
         if(!myName) return;
-        peer = new Peer();
+        // iPhone için secure:true eklendi
+        peer = new Peer({ secure: true });
         peer.on('open', () => {
             const conn = peer.connect(id);
             conn.on('open', () => conn.send({ type: 'join', name: myName }));
@@ -465,4 +466,4 @@
     }
 </script>
 </body>
-</html> 
+</html>
