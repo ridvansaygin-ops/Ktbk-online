@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V21 | LİDER ZAMANLAYICI</title>
+    <title>GAFİL KÖSTEBEK | V22 | LİDER SÖZ DEVRET</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -42,7 +42,7 @@
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
             <div class="rule-box">
-                <p>🗣️ <strong>İsmi yazan kişi konuşur, sonra sözü devreder.</strong></p>
+                <p>🗣️ <strong>İsmi yazan kişi konuşur, lider sözü devreder.</strong></p>
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 pasta eleme yok &nbsp;|&nbsp; ⚖️ Beraberlikte köstebek kazanır</p>
@@ -84,7 +84,7 @@
         <div id="discussion-area" class="hidden">
             <div id="speaker-name">🎤 --- <span class="speaker-indicator">KONUŞUYOR</span></div>
             <div id="timer-display">30</div>
-            <button id="end-turn-btn" class="btn btn-main" onclick="requestNextSpeaker()">⏩ SÖZÜ DEVRET</button>
+            <div id="leader-next-speaker-area" class="hidden"><button class="btn btn-main" onclick="nextSpeaker()">⏩ SÖZÜ DEVRET (LİDER)</button></div>
         </div>
         <div id="vote-phase-btn-area" class="hidden"><button class="btn btn-katil" onclick="goToVotePhase()">🗳️ OYLAMAYA GEÇ</button></div>
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
@@ -109,8 +109,7 @@
 </div>
 
 <script>
-    // ======================= 1. PARÇA SONU =======================
-    //    // ======================= PEERJS (iPhone için secure:true) =======================
+        // ======================= PEERJS (iPhone secure) =======================
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -146,14 +145,11 @@
         else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
-        else if(d.type === 'request_next_speaker') { if(isHost && discussionActive && currentSpeakerName === d.speakerName) nextSpeaker(); }
         else if(d.type === 'disc_start') { 
             if(!isHost) {
                 currentSpeakerName = d.speakerName;
                 document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
                 document.getElementById('discussion-area').classList.remove('hidden');
-                // Timer gösterimi liderden gelen update ile olacak, burada sadece sıfırlama
-                document.getElementById('timer-display').innerText = "30";
             }
         }
         else if(d.type === 'timer_update') {
@@ -257,7 +253,7 @@
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
     
-    // ---------- LİDER MERKEZLİ TARTIŞMA (TIMER VE SIRA) ----------
+    // ---------- LİDER MERKEZLİ TARTIŞMA (Sadece lider söz devreder) ----------
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive = true;
@@ -266,11 +262,14 @@
         currentSpeakerName = currentGame.discussionOrder[0];
         // Herkese yeni konuşmacıyı bildir
         broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
+        broadcast({ type: 'timer_update', time: currentTime });
         // Lider kendi ekranını güncelle
         document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
         document.getElementById('discussion-area').classList.remove('hidden');
         document.getElementById('timer-display').innerText = currentTime;
         document.getElementById('host-action').classList.add('hidden');
+        // Liderin söz devret butonunu göster
+        document.getElementById('leader-next-speaker-area').classList.remove('hidden');
         // Timer'ı başlat (sadece lider)
         if(leaderTimer) clearInterval(leaderTimer);
         leaderTimer = setInterval(() => {
@@ -280,24 +279,9 @@
             broadcast({ type: 'timer_update', time: currentTime });
             if(currentTime <= 0){
                 clearInterval(leaderTimer);
-                // Süre dolunca otomatik sıradaki konuşmacıya geç
                 nextSpeaker();
             }
         }, 1000);
-    }
-    
-    function requestNextSpeaker(){
-        if(!discussionActive) return;
-        if(currentSpeakerName !== myName){
-            alert("Sadece konuşan oyuncu sözü devredebilir!");
-            return;
-        }
-        if(isHost){
-            nextSpeaker();
-        } else {
-            let c = Object.values(connections)[0];
-            if(c) c.send({ type: 'request_next_speaker', speakerName: myName });
-        }
     }
     
     function nextSpeaker(){
@@ -327,6 +311,7 @@
             discussionActive = false;
             document.getElementById('discussion-area').classList.add('hidden');
             document.getElementById('vote-phase-btn-area').classList.remove('hidden');
+            document.getElementById('leader-next-speaker-area').classList.add('hidden');
             broadcast({ type: 'force_vote' });
             if(leaderTimer) clearInterval(leaderTimer);
         }
@@ -474,4 +459,4 @@
     }
 </script>
 </body>
-</html> 
+</htm>
