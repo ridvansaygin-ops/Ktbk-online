@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V20 | IPHONE DÜZELTME</title>
+    <title>GAFİL KÖSTEBEK | V21 | LİDER ZAMANLAYICI</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -37,7 +37,6 @@
     <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
-    <!-- LOBİ -->
     <div id="screen-lobby">
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
@@ -68,7 +67,6 @@
         </div>
     </div>
 
-    <!-- kelime göster -->
     <div id="screen-reveal" class="hidden">
         <h2>SENİN KELİMEN</h2>
         <div id="my-reveal-word" class="reveal-word-box">???</div>
@@ -78,7 +76,6 @@
         <button id="approveBtn" class="btn btn-gafil hidden" onclick="approveAndStartGame()">✅ OYUNU BAŞLAT</button>
     </div>
 
-    <!-- oyun -->
     <div id="screen-game" class="hidden">
         <div id="wordCounter">📖 1/5</div>
         <div class="word-box" id="game-word-box">---</div>
@@ -93,7 +90,6 @@
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
     </div>
 
-    <!-- oylama -->
     <div id="screen-vote" class="hidden">
         <h3>🗳️ KİM KÖSTEBEK?</h3>
         <div id="vote-status"></div>
@@ -103,7 +99,6 @@
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
     </div>
 
-    <!-- sonuç -->
     <div id="screen-result" class="hidden">
         <h1 id="result-title">---</h1>
         <div id="result-body"></div>
@@ -114,18 +109,18 @@
 </div>
 
 <script>
-        // ======================= PEERJS BAĞLANTI (iPhone için secure:true) =======================
+    // ======================= 1. PARÇA SONU =======================
+    //    // ======================= PEERJS (iPhone için secure:true) =======================
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
-    let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, discTimer = null;
+    let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, leaderTimer = null, currentTime = 30;
 
     function odaKur() {
         myName = document.getElementById('nameInput').value.trim();
         if(!myName || myName.length<2) { alert("Geçerli isim"); return; }
         isHost = true;
         myId = "KST-"+Math.random().toString(36).substr(2,6).toUpperCase();
-        // iPhone için secure:true eklendi
         peer = new Peer(myId, { secure: true });
         peer.on('connection', c => { c.on('data', d => handleDataMessage(d, c)); c.on('close', () => refreshPlayers()); });
         document.getElementById('setup-area').classList.add('hidden');
@@ -151,18 +146,18 @@
         else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
-        else if(d.type === 'request_next_speaker') { if(isHost && discussionActive) nextSpeaker(); }
+        else if(d.type === 'request_next_speaker') { if(isHost && discussionActive && currentSpeakerName === d.speakerName) nextSpeaker(); }
         else if(d.type === 'disc_start') { 
             if(!isHost) {
                 currentSpeakerName = d.speakerName;
                 document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
                 document.getElementById('discussion-area').classList.remove('hidden');
-                if(d.speakerName === myName) startMyTimer();
-                else stopMyTimer();
+                // Timer gösterimi liderden gelen update ile olacak, burada sadece sıfırlama
+                document.getElementById('timer-display').innerText = "30";
             }
         }
         else if(d.type === 'timer_update') {
-            if(!isHost && discussionActive && currentSpeakerName !== myName) {
+            if(!isHost && discussionActive) {
                 document.getElementById('timer-display').innerText = d.time;
             }
         }
@@ -185,7 +180,6 @@
     function odayaKatil(id) {
         myName = document.getElementById('nameInput').value.trim();
         if(!myName) return;
-        // iPhone için secure:true eklendi
         peer = new Peer({ secure: true });
         peer.on('open', () => {
             const conn = peer.connect(id);
@@ -263,64 +257,78 @@
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
     
-    // ---------- TARTIŞMA (TIMER BROADCAST) ----------
+    // ---------- LİDER MERKEZLİ TARTIŞMA (TIMER VE SIRA) ----------
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive = true;
         currentSpeakerIdx = 0;
-        let first = currentGame.discussionOrder[0];
-        broadcast({ type: 'disc_start', speakerName: first });
-        currentSpeakerName = first;
-        document.getElementById('speaker-name').innerHTML = "🎤 "+first+' <span class="speaker-indicator">KONUŞUYOR</span>';
+        currentTime = 30;
+        currentSpeakerName = currentGame.discussionOrder[0];
+        // Herkese yeni konuşmacıyı bildir
+        broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
+        // Lider kendi ekranını güncelle
+        document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
         document.getElementById('discussion-area').classList.remove('hidden');
-        if(first === myName) startMyTimer();
-        else stopMyTimer();
+        document.getElementById('timer-display').innerText = currentTime;
         document.getElementById('host-action').classList.add('hidden');
-    }
-    
-    function startMyTimer(){
-        if(discTimer) clearInterval(discTimer);
-        let t = 30;
-        let td = document.getElementById('timer-display');
-        td.innerText = t;
-        discTimer = setInterval(() => {
-            if(!discussionActive){ clearInterval(discTimer); return; }
-            t--;
-            td.innerText = t;
-            if(isHost && discussionActive) broadcast({ type: 'timer_update', time: t });
-            if(t <= 0){ clearInterval(discTimer); requestNextSpeaker(); }
+        // Timer'ı başlat (sadece lider)
+        if(leaderTimer) clearInterval(leaderTimer);
+        leaderTimer = setInterval(() => {
+            if(!discussionActive){ clearInterval(leaderTimer); return; }
+            currentTime--;
+            document.getElementById('timer-display').innerText = currentTime;
+            broadcast({ type: 'timer_update', time: currentTime });
+            if(currentTime <= 0){
+                clearInterval(leaderTimer);
+                // Süre dolunca otomatik sıradaki konuşmacıya geç
+                nextSpeaker();
+            }
         }, 1000);
-    }
-    
-    function stopMyTimer(){
-        if(discTimer) clearInterval(discTimer);
-        document.getElementById('timer-display').innerText = "30";
     }
     
     function requestNextSpeaker(){
         if(!discussionActive) return;
-        if(currentSpeakerName !== myName){ alert("Sadece konuşan oyuncu sözü devredebilir!"); return; }
-        if(isHost) nextSpeaker();
-        else { let c = Object.values(connections)[0]; if(c) c.send({ type: 'request_next_speaker' }); }
+        if(currentSpeakerName !== myName){
+            alert("Sadece konuşan oyuncu sözü devredebilir!");
+            return;
+        }
+        if(isHost){
+            nextSpeaker();
+        } else {
+            let c = Object.values(connections)[0];
+            if(c) c.send({ type: 'request_next_speaker', speakerName: myName });
+        }
     }
     
     function nextSpeaker(){
         if(!isHost || !discussionActive) return;
-        clearInterval(discTimer);
+        clearInterval(leaderTimer);
         currentSpeakerIdx++;
         if(currentSpeakerIdx < currentGame.discussionOrder.length){
-            let next = currentGame.discussionOrder[currentSpeakerIdx];
-            broadcast({ type: 'disc_start', speakerName: next });
-            currentSpeakerName = next;
-            document.getElementById('speaker-name').innerHTML = "🎤 "+next+' <span class="speaker-indicator">KONUŞUYOR</span>';
-            if(next === myName) startMyTimer();
-            else stopMyTimer();
+            currentSpeakerName = currentGame.discussionOrder[currentSpeakerIdx];
+            currentTime = 30;
+            broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
+            broadcast({ type: 'timer_update', time: currentTime });
+            // Lider ekranını güncelle
+            document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
+            document.getElementById('timer-display').innerText = currentTime;
+            // Timer'ı yeniden başlat
+            leaderTimer = setInterval(() => {
+                if(!discussionActive){ clearInterval(leaderTimer); return; }
+                currentTime--;
+                document.getElementById('timer-display').innerText = currentTime;
+                broadcast({ type: 'timer_update', time: currentTime });
+                if(currentTime <= 0){
+                    clearInterval(leaderTimer);
+                    nextSpeaker();
+                }
+            }, 1000);
         } else {
             discussionActive = false;
             document.getElementById('discussion-area').classList.add('hidden');
             document.getElementById('vote-phase-btn-area').classList.remove('hidden');
             broadcast({ type: 'force_vote' });
-            stopMyTimer();
+            if(leaderTimer) clearInterval(leaderTimer);
         }
     }
     
@@ -451,7 +459,7 @@
         let btn=document.createElement('button'); btn.innerText="🏠 LOBİYE DÖN"; btn.className="btn btn-main"; btn.onclick=()=>resetToLobby(); document.getElementById('result-body').appendChild(btn);
     }
     function resetToLobby(){
-        if(discTimer) clearInterval(discTimer);
+        if(leaderTimer) clearInterval(leaderTimer);
         discussionActive = false;
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('screen-vote').classList.add('hidden');
@@ -466,4 +474,4 @@
     }
 </script>
 </body>
-</html>
+</html> 
