@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | SESLİ V24 | HERKES BİRBİRİNİ DUYAR</title>
+    <title>GAFİL KÖSTEBEK | V25 | LİDER SÖZ DEVRET + FULL MESH SES</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -37,7 +37,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[SESLİ V24]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[SESLİ V25]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -45,7 +45,7 @@
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
             <div class="rule-box">
-                <p>🗣️ <strong>Konuşan oyuncu "Sözü Devret" butonuna basar, sıra otomatik geçer.</strong></p>
+                <p>🗣️ <strong>Lider "Sözü Devret" butonuna basarak sırayı ilerletir.</strong></p>
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 pasta eleme yok &nbsp;|&nbsp; ⚖️ Beraberlikte köstebek kazanır</p>
@@ -88,7 +88,7 @@
         <div id="discussion-area" class="hidden">
             <div id="speaker-name">🎤 --- <span class="speaker-indicator">KONUŞUYOR</span></div>
             <div id="timer-display">30</div>
-            <button id="next-speaker-btn" class="btn btn-main" onclick="requestNextSpeaker()">⏩ SÖZÜ DEVRET</button>
+            <div id="leader-next-speaker-area" class="hidden"><button class="btn btn-main" onclick="nextSpeaker()">⏩ SÖZÜ DEVRET (LİDER)</button></div>
         </div>
         <div id="vote-phase-btn-area" class="hidden"><button class="btn btn-katil" onclick="goToVotePhase()">🗳️ OYLAMAYA GEÇ</button></div>
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
@@ -113,11 +113,10 @@
 </div>
 
 <script>
-// ========== 1. PARÇA SONU ==========
-/// ========== 2. PARÇA: PEERJS FULL MESH SES + DATA ==========
+/// ========== 2. PARÇA: FULL MESH SES + DATA ==========
 let peer, myId, myName, isHost = false;
-let players = [], connections = {};  // data bağlantıları
-let remoteStreams = {};  // ses akışları (audio elementler)
+let players = [], connections = {};
+let remoteStreams = {}; // ses akışları (audio elementler)
 let localStream = null;
 let myMicEnabled = true;
 let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -142,7 +141,7 @@ function toggleLocalMic(enable) {
 // Tüm oyunculara ses çağrısı yap (full mesh)
 function callAllPlayers() {
     for(let p of players) {
-        if(p.name !== myName && !remoteStreams[p.name]) {
+        if(p.name !== myName && connections[p.name] && !remoteStreams[p.name]) {
             const call = peer.call(connections[p.name].peer, localStream, { metadata: { name: myName } });
             call.on('stream', remoteStream => {
                 if(!remoteStreams[p.name]) {
@@ -203,7 +202,7 @@ function odayaKatil(id) {
         const conn = peer.connect(id);
         conn.on('open', () => conn.send({ type: 'join', name: myName }));
         conn.on('data', d => handleDataMessage(d, conn));
-        connections[myName] = conn; // kendimizi de ekle? hayır
+        connections[myName] = conn;
         peer.on('call', call => {
             call.answer(localStream);
             call.on('stream', remoteStream => {
@@ -232,7 +231,7 @@ function handleDataMessage(d, conn) {
             connections[d.name] = conn;
             broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) });
             renderLobby();
-            // Yeni oyuncuya ses çağrısı yap (full mesh)
+            // Yeni oyuncuya ses çağrısı yap
             if(localStream) {
                 const call = peer.call(conn.peer, localStream, { metadata: { name: myName } });
                 call.on('stream', remoteStream => {
@@ -245,7 +244,7 @@ function handleDataMessage(d, conn) {
                     }
                 });
             }
-            // Mevcut tüm oyunculara da ses çağrısı yap (kendimiz hariç)
+            // Mevcut tüm oyunculara ses çağrısı yap (kendimiz hariç)
             callAllPlayers();
         }
     } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); callAllPlayers(); }
@@ -253,13 +252,13 @@ function handleDataMessage(d, conn) {
     else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
     else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
     else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
-    else if(d.type === 'request_next_speaker') { if(isHost && discussionActive && currentSpeakerName === d.speakerName) nextSpeaker(); }
     else if(d.type === 'disc_start') { 
         if(!isHost) {
             currentSpeakerName = d.speakerName;
             document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
             document.getElementById('discussion-area').classList.remove('hidden');
             document.getElementById('timer-display').innerText = "30";
+            // Mikrofon kontrolü
             if(d.speakerName === myName) toggleLocalMic(true);
             else toggleLocalMic(false);
             // Diğerlerinin sesini kapat, konuşmacının sesini aç
@@ -305,7 +304,8 @@ function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: playe
 
 const urlParams=new URLSearchParams(window.location.search); const joinId=urlParams.get('join');
 if(joinId) { document.getElementById('setup-area').innerHTML = `<input type="text" id="nameInput" placeholder="Adınız"><button class="btn btn-main" onclick="initMicrophone().then(()=>odayaKatil('${joinId}'))">🎧 KATIL</button>`; }
-// ========== 3. PARÇA: OYUN MEKANİĞİ ==========
+
+/// ========== 3. PARÇA: OYUN MEKANİĞİ (LİDER SIRA YÖNETİMİ) ==========
 const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
 let fullHavuz = kelimeHavuzu;
 
@@ -382,6 +382,7 @@ function finishRevealAndStartGame(){
 
 function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
 
+// Lider merkezli tartışma başlatma
 function startDiscussion(){
     if(discussionActive) return;
     discussionActive = true;
@@ -395,9 +396,12 @@ function startDiscussion(){
     document.getElementById('discussion-area').classList.remove('hidden');
     document.getElementById('timer-display').innerText = currentTime;
     document.getElementById('host-action').classList.add('hidden');
+    // Lider kendi mikrofonunu ayarla
     if(currentSpeakerName === myName) toggleLocalMic(true);
     else toggleLocalMic(false);
     for(let name in remoteStreams) remoteStreams[name].muted = (name !== currentSpeakerName);
+    // Liderin söz devret butonunu göster
+    document.getElementById('leader-next-speaker-area').classList.remove('hidden');
     if(leaderTimer) clearInterval(leaderTimer);
     leaderTimer = setInterval(() => {
         if(!discussionActive){ clearInterval(leaderTimer); return; }
@@ -406,18 +410,12 @@ function startDiscussion(){
         broadcast({ type: 'timer_update', time: currentTime });
         if(currentTime <= 0){
             clearInterval(leaderTimer);
-            requestNextSpeaker();
+            nextSpeaker(); // lider otomatik geçer
         }
     }, 1000);
 }
 
-function requestNextSpeaker(){
-    if(!discussionActive) return;
-    if(currentSpeakerName !== myName){ alert("Sadece konuşan oyuncu sözü devredebilir!"); return; }
-    if(isHost) nextSpeaker();
-    else { let c = Object.values(connections)[0]; if(c) c.send({ type: 'request_next_speaker', speakerName: myName }); }
-}
-
+// Sadece lider çağırır (diğer oyuncularda buton yok)
 function nextSpeaker(){
     if(!isHost || !discussionActive) return;
     clearInterval(leaderTimer);
@@ -447,6 +445,7 @@ function nextSpeaker(){
         discussionActive = false;
         document.getElementById('discussion-area').classList.add('hidden');
         document.getElementById('vote-phase-btn-area').classList.remove('hidden');
+        document.getElementById('leader-next-speaker-area').classList.add('hidden');
         broadcast({ type: 'force_vote' });
         if(leaderTimer) clearInterval(leaderTimer);
         toggleLocalMic(false);
@@ -598,4 +597,4 @@ function resetToLobby(){
 }
 </script>
 </body>
-</html>
+</html> 
