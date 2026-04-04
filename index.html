@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V25 | SON</title>
+    <title>GAFİL KÖSTEBEK | V20 | KURALLI</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -37,10 +37,12 @@
     <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
+    <!-- LOBİ -->
     <div id="screen-lobby">
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
+            <!-- KURALLAR BUTON ALTINDA -->
             <div class="rule-box">
                 <p>🗣️ <strong>İsmi yazan kişi konuşur, sonra sözü devreder.</strong></p>
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
@@ -67,6 +69,7 @@
         </div>
     </div>
 
+    <!-- kelime göster -->
     <div id="screen-reveal" class="hidden">
         <h2>SENİN KELİMEN</h2>
         <div id="my-reveal-word" class="reveal-word-box">???</div>
@@ -76,6 +79,7 @@
         <button id="approveBtn" class="btn btn-gafil hidden" onclick="approveAndStartGame()">✅ OYUNU BAŞLAT</button>
     </div>
 
+    <!-- oyun -->
     <div id="screen-game" class="hidden">
         <div id="wordCounter">📖 1/5</div>
         <div class="word-box" id="game-word-box">---</div>
@@ -90,6 +94,7 @@
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
     </div>
 
+    <!-- oylama -->
     <div id="screen-vote" class="hidden">
         <h3>🗳️ KİM KÖSTEBEK?</h3>
         <div id="vote-status"></div>
@@ -99,6 +104,7 @@
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
     </div>
 
+    <!-- sonuç -->
     <div id="screen-result" class="hidden">
         <h1 id="result-title">---</h1>
         <div id="result-body"></div>
@@ -109,7 +115,7 @@
 </div>
 
 <script>
-        // ======================= PEERJS BAĞLANTI =======================
+      // ======================= PEERJS BAĞLANTI =======================
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -256,15 +262,13 @@
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
     
-    // ---------- DÜZELTİLMİŞ TARTIŞMA (HERKES GÖRÜR, TIMER SENKRON) ----------
+    // ---------- TARTIŞMA (TIMER BROADCAST) ----------
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive = true;
         currentSpeakerIdx = 0;
         let first = currentGame.discussionOrder[0];
-        // Lider herkese disc_start gönderir
         broadcast({ type: 'disc_start', speakerName: first });
-        // Lider kendi ekranını da günceller
         currentSpeakerName = first;
         document.getElementById('speaker-name').innerHTML = "🎤 "+first+' <span class="speaker-indicator">KONUŞUYOR</span>';
         document.getElementById('discussion-area').classList.remove('hidden');
@@ -282,14 +286,8 @@
             if(!discussionActive){ clearInterval(discTimer); return; }
             t--;
             td.innerText = t;
-            // Lider her saniye timer'ı broadcast eder
-            if(isHost && discussionActive) {
-                broadcast({ type: 'timer_update', time: t });
-            }
-            if(t <= 0){
-                clearInterval(discTimer);
-                requestNextSpeaker();
-            }
+            if(isHost && discussionActive) broadcast({ type: 'timer_update', time: t });
+            if(t <= 0){ clearInterval(discTimer); requestNextSpeaker(); }
         }, 1000);
     }
     
@@ -300,16 +298,9 @@
     
     function requestNextSpeaker(){
         if(!discussionActive) return;
-        if(currentSpeakerName !== myName){
-            alert("Sadece konuşan oyuncu sözü devredebilir!");
-            return;
-        }
-        if(isHost){
-            nextSpeaker();
-        } else {
-            let c = Object.values(connections)[0];
-            if(c) c.send({ type: 'request_next_speaker' });
-        }
+        if(currentSpeakerName !== myName){ alert("Sadece konuşan oyuncu sözü devredebilir!"); return; }
+        if(isHost) nextSpeaker();
+        else { let c = Object.values(connections)[0]; if(c) c.send({ type: 'request_next_speaker' }); }
     }
     
     function nextSpeaker(){
@@ -319,7 +310,6 @@
         if(currentSpeakerIdx < currentGame.discussionOrder.length){
             let next = currentGame.discussionOrder[currentSpeakerIdx];
             broadcast({ type: 'disc_start', speakerName: next });
-            // Lider kendi ekranını güncelle
             currentSpeakerName = next;
             document.getElementById('speaker-name').innerHTML = "🎤 "+next+' <span class="speaker-indicator">KONUŞUYOR</span>';
             if(next === myName) startMyTimer();
@@ -475,4 +465,5 @@
     }
 </script>
 </body>
-</html>
+</html> 
+    // ŞİMDİ 2. PARÇAYI KOPYALAYIP ALTINA YAPIŞTIRIN
