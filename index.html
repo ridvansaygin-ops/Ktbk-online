@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V22</title>
+    <title>GAFİL KÖSTEBEK | V23 | KARARLI</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -114,7 +114,7 @@
 </div>
 
 <script>
-     // ----------------------------- PEERJS (SADECE DATA) -----------------------------
+        // ----------------------------- PEERJS (SADECE DATA) -----------------------------
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -151,11 +151,12 @@
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
         else if(d.type === 'request_next_speaker') { if(isHost && discussionActive) nextSpeaker(); }
-        else if(d.type === 'disc_start') { if(!isHost) runDiscussionClient(d.speakerName); }
+        else if(d.type === 'disc_start') { if(!isHost) { currentSpeakerName = d.speakerName; document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>'; if(d.speakerName === myName) startMyTimer(); else stopMyTimer(); } }
         else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
         else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
         else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
         else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
+        else if(d.type === 'stop_timer') { if(discTimer) clearInterval(discTimer); }
     }
     function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
     function renderLobby() {
@@ -181,7 +182,6 @@
         });
     }
 
-    // ----------------------------- OYUN MEKANİĞİ -----------------------------
     const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
     let fullHavuz = kelimeHavuzu;
     function createRandomDiscussionOrder(playersList,mode,spyNames){
@@ -247,42 +247,81 @@
         document.getElementById('vote-phase-btn-area').classList.add('hidden');
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
+    
+    // ---------- DÜZELTİLMİŞ TARTIŞMA VE SIRA YÖNETİMİ ----------
     function startDiscussion(){
         if(discussionActive) return;
-        discussionActive=true; currentSpeakerIdx=0;
-        let first=currentGame.discussionOrder[0];
-        broadcast({type:'disc_start',speakerName:first});
-        runDiscussion(first);
+        discussionActive = true;
+        currentSpeakerIdx = 0;
+        let first = currentGame.discussionOrder[0];
+        broadcast({ type: 'disc_start', speakerName: first });
+        // Lider kendisi için de ayarla
+        currentSpeakerName = first;
+        document.getElementById('speaker-name').innerHTML = "🎤 "+first+' <span class="speaker-indicator">KONUŞUYOR</span>';
+        if(first === myName) startMyTimer();
+        else stopMyTimer();
+        // Liderin butonlarını gizle
+        document.getElementById('host-action').classList.add('hidden');
+        document.getElementById('discussion-area').classList.remove('hidden');
     }
-    function runDiscussion(speaker){
-        if(!discussionActive) return;
-        currentSpeakerName=speaker;
-        document.getElementById('speaker-name').innerHTML="🎤 "+speaker+' <span class="speaker-indicator">KONUŞUYOR</span>';
+    
+    function startMyTimer(){
         if(discTimer) clearInterval(discTimer);
-        let t=30, td=document.getElementById('timer-display'); td.innerText=t;
-        discTimer=setInterval(()=>{ if(!discussionActive){clearInterval(discTimer);return;} t--; td.innerText=t; if(t<=0){ clearInterval(discTimer); if(speaker===myName) requestNextSpeaker(); } },1000);
+        let t = 30;
+        let td = document.getElementById('timer-display');
+        td.innerText = t;
+        discTimer = setInterval(() => {
+            if(!discussionActive){ clearInterval(discTimer); return; }
+            t--;
+            td.innerText = t;
+            if(t <= 0){
+                clearInterval(discTimer);
+                requestNextSpeaker();
+            }
+        }, 1000);
     }
-    function runDiscussionClient(speaker){ runDiscussion(speaker); }
+    
+    function stopMyTimer(){
+        if(discTimer) clearInterval(discTimer);
+        document.getElementById('timer-display').innerText = "30";
+    }
+    
     function requestNextSpeaker(){
         if(!discussionActive) return;
-        if(currentSpeakerName !== myName) { alert("Sadece konuşan oyuncu devredebilir!"); return; }
-        if(isHost) nextSpeaker();
-        else { let c=Object.values(connections)[0]; if(c) c.send({ type: 'request_next_speaker' }); }
-    }
-    function nextSpeaker(){
-        if(!isHost||!discussionActive) return;
-        clearInterval(discTimer); currentSpeakerIdx++;
-        if(currentSpeakerIdx<currentGame.discussionOrder.length){
-            let next=currentGame.discussionOrder[currentSpeakerIdx];
-            broadcast({type:'disc_start',speakerName:next});
-            runDiscussion(next);
+        if(currentSpeakerName !== myName){
+            alert("Sadece konuşan oyuncu sözü devredebilir!");
+            return;
+        }
+        if(isHost){
+            nextSpeaker();
         } else {
-            discussionActive=false;
-            document.getElementById('discussion-area').classList.add('hidden');
-            document.getElementById('vote-phase-btn-area').classList.remove('hidden');
-            broadcast({type:'force_vote'});
+            let c = Object.values(connections)[0];
+            if(c) c.send({ type: 'request_next_speaker' });
         }
     }
+    
+    function nextSpeaker(){
+        if(!isHost || !discussionActive) return;
+        clearInterval(discTimer);
+        currentSpeakerIdx++;
+        if(currentSpeakerIdx < currentGame.discussionOrder.length){
+            let next = currentGame.discussionOrder[currentSpeakerIdx];
+            broadcast({ type: 'disc_start', speakerName: next });
+            // Lider kendi ekranını da güncelle
+            currentSpeakerName = next;
+            document.getElementById('speaker-name').innerHTML = "🎤 "+next+' <span class="speaker-indicator">KONUŞUYOR</span>';
+            if(next === myName) startMyTimer();
+            else stopMyTimer();
+        } else {
+            discussionActive = false;
+            document.getElementById('discussion-area').classList.add('hidden');
+            document.getElementById('vote-phase-btn-area').classList.remove('hidden');
+            broadcast({ type: 'force_vote' });
+            stopMyTimer();
+        }
+    }
+    
+    // ---------- OYLAMA VE SONUÇ ----------
     function goToVotePhase(){ if(isHost) broadcast({type:'vote_start'}); startVotingPhase(); }
     function startVotingPhase(){
         document.getElementById('screen-game').classList.add('hidden');
@@ -409,6 +448,8 @@
         let btn=document.createElement('button'); btn.innerText="🏠 LOBİYE DÖN"; btn.className="btn btn-main"; btn.onclick=()=>resetToLobby(); document.getElementById('result-body').appendChild(btn);
     }
     function resetToLobby(){
+        if(discTimer) clearInterval(discTimer);
+        discussionActive = false;
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('screen-vote').classList.add('hidden');
         document.getElementById('screen-result').classList.add('hidden');
@@ -417,9 +458,9 @@
         renderLobby();
         broadcast({type:'sync',players:players.map(p=>({name:p.name,score:p.score,alive:true}))});
         broadcast({type:'reset_to_lobby'});
-        voteStarted=false; hasVoted=false; discussionActive=false;
-        if(voteTimer) clearInterval(voteTimer); if(discTimer) clearInterval(discTimer);
+        voteStarted=false; hasVoted=false;
+        if(voteTimer) clearInterval(voteTimer);
     }
 </script>
 </body>
-</html>   
+</html>/ 
