@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V14 | HERKES OYLAR</title>
+    <title>GAFİL KÖSTEBEK | V15 | SON</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -50,16 +50,15 @@
         .leader-approve-btn { background: var(--green); color: white; margin-top: 10px; }
         .rule-note { background: #0a0a0a; padding: 8px; border-radius: 15px; font-size: 0.7em; color: var(--gold); margin-top: 10px; }
         .reveal-word-box { background: #0f0f0f; border: 2px solid var(--gold); padding: 20px; font-size: 1.8em; margin: 15px 0; border-radius: 20px; }
-        .end-turn-enabled { background: #2e7d32 !important; color: white !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="screen-lobby">
-        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Beraberlikte KÖSTEBEK kazanır. HERKES oy kullanır, HERKES sözü devredebilir! 🎲</div></div>
-        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V14]</span></h1>
-        <div class="author">M. RIDVAN SAYGIN | HERKES OYLAR</div>
+        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Beraberlikte KÖSTEBEK kazanır. HERKES oy kullanır, KONUŞAN kişi sözü devredebilir! 🎲</div></div>
+        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V15]</span></h1>
+        <div class="author">M. RIDVAN SAYGIN | SON</div>
         
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
@@ -110,7 +109,7 @@
         <div id="host-action" class="hidden"><button class="btn btn-gafil" onclick="startDiscussion()">🎙️ TARTIŞMAYI BAŞLAT</button></div>
         <div id="discussion-area" class="hidden">
             <div id="speaker-name" style="color:var(--gold); font-size:1.3rem;">🎤 --- <span id="speaker-badge" class="speaker-indicator">KONUŞUYOR</span></div>
-            <div id="timer-display">30</div>
+            <div id="timer-display">20</div>
             <button id="end-turn-btn" class="btn btn-main" onclick="requestNextSpeaker()">⏩ SÖZÜ DEVRET</button>
         </div>
         <div id="vote-phase-btn-area" class="hidden"><button class="btn btn-red" onclick="goToVotePhase()">🗳️ OYLAMAYA GEÇ</button></div>
@@ -134,7 +133,7 @@
         <h1 id="result-title">---</h1>
         <div id="result-body" style="padding: 12px;"></div>
         <div id="result-scoreboard" style="background:#0a0a0a; border-radius:20px; padding:10px; margin-top:10px;"></div>
-        <button id="resultNextBtn" class="btn btn-main" onclick="proceedAfterResult()">▶️ DEVAM</button>
+        <div id="next-round-btn-area" class="hidden"><button id="nextRoundBtn" class="btn btn-main" onclick="nextRound()">⏩ SONRAKİ KELİME</button></div>
         <button class="btn btn-exit" onclick="exitToLobby()">🚪 LOBİYE DÖN</button>
     </div>
 </div>
@@ -152,7 +151,7 @@
     let connections = {};
     let remoteStreams = {};
     let mutedPlayers = {};
-    let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, pasCount: 0, currentRound: 0, totalRounds: 5, discussionOrder: [] };
+    let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 0, totalRounds: 5, discussionOrder: [] };
     let discussionActive = false, currentSpeakerIdx = 0;
     let leaderConfirmed = false;
     let currentSpeakerName = "";
@@ -160,25 +159,20 @@
     let myAssignedWord = null;
     let voteStarted = false;
     let hasVoted = false;
+    let waitingForNextRound = false;
 
     async function getMedia() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
 
-    function muteAllExcept(speakerName) {
-        for(let name in remoteStreams) {
-            let isMutedByMe = mutedPlayers[name] === true;
-            let shouldBeMuted = (name !== speakerName) || isMutedByMe;
-            if(remoteStreams[name].audioElement) {
-                remoteStreams[name].audioElement.muted = shouldBeMuted;
-            }
+    function updateRemoteMute(remoteName, isMuted) {
+        if(remoteStreams[remoteName] && remoteStreams[remoteName].audioElement) {
+            remoteStreams[remoteName].audioElement.muted = isMuted;
         }
     }
     
     function toggleMutePlayer(targetName) {
         if(targetName === myName) return;
         mutedPlayers[targetName] = !mutedPlayers[targetName];
-        if(remoteStreams[targetName] && remoteStreams[targetName].audioElement) {
-            remoteStreams[targetName].audioElement.muted = mutedPlayers[targetName];
-        }
+        updateRemoteMute(targetName, mutedPlayers[targetName]);
         renderLobby();
     }
     
@@ -235,7 +229,6 @@
                 remoteStreams[remoteName] = { stream: s, audioElement: audio };
                 audio.play();
                 if(mutedPlayers[remoteName]) audio.muted = true;
-                muteAllExcept(currentSpeakerName);
             });
         });
     }
@@ -255,7 +248,6 @@
                     remoteStreams[d.name] = { stream: s, audioElement: audio };
                     audio.play();
                     if(mutedPlayers[d.name]) audio.muted = true;
-                    muteAllExcept(currentSpeakerName);
                 });
             }
         } 
@@ -263,9 +255,8 @@
         else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
         else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
-        else if(d.type === 'start_next_round') { if(!isHost) startNewRound(); }
+        else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
         else if(d.type === 'request_next_speaker') { 
-            // HERKES sözü devredebilir - lider kontrolüne gerek yok
             if(discussionActive && currentSpeakerName === d.speakerName) {
                 nextSpeaker();
             }
@@ -273,11 +264,12 @@
         else if(d.type === 'disc_start') { if(!isHost) runDiscussionClient(d.idx, d.speakerName); }
         else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
         else if(d.type === 'set_speaker') { 
-            if(!isHost && d.speakerName === myName) { setMyMic(true); muteAllExcept(myName); } 
-            else if(!isHost) { setMyMic(false); muteAllExcept(d.speakerName); }
+            if(!isHost && d.speakerName === myName) { setMyMic(true); } 
+            else if(!isHost) { setMyMic(false); }
         }
         else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
-        else if(d.type === 'vote_start') { if(!isHost) startVotingPhaseClient(); }
+        else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
+        else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
     }
 
     function refreshPlayers() { if(isHost) { broadcast({ type: 'sync', players: players.map(p => ({ name:p.name, score:p.score, alive:p.alive, mic:p.mic })) }); renderLobby(); } }
@@ -342,7 +334,6 @@
                 remoteStreams[remoteName] = { stream: s, audioElement: audio };
                 audio.play();
                 if(mutedPlayers[remoteName]) audio.muted = true;
-                muteAllExcept(currentSpeakerName);
             });
         });
     }
@@ -389,7 +380,7 @@
             if(p.name === myName) myAssignedWord = p.word;
         }
         
-        currentGame = { mode, spyNames, pair, playersSnapshot: JSON.parse(JSON.stringify(players)), votes: {}, playerVotes: {}, pasCount: 0, currentRound: 1, totalRounds, discussionOrder };
+        currentGame = { mode, spyNames, pair, playersSnapshot: JSON.parse(JSON.stringify(players)), votes: {}, playerVotes: {}, currentRound: 1, totalRounds, discussionOrder };
         leaderConfirmed = false;
         
         document.getElementById('screen-lobby').classList.add('hidden');
@@ -408,7 +399,7 @@
         for(let p of gameData.playersList) {
             if(p.name === myName) myAssignedWord = p.word;
         }
-        currentGame = { mode: gameData.mode, spyNames: gameData.spyNames, pair: gameData.pair, playersSnapshot: gameData.playersList, votes: {}, playerVotes: {}, pasCount: 0, currentRound: 1, totalRounds: gameData.totalRounds, discussionOrder: gameData.discussionOrder };
+        currentGame = { mode: gameData.mode, spyNames: gameData.spyNames, pair: gameData.pair, playersSnapshot: gameData.playersList, votes: {}, playerVotes: {}, currentRound: 1, totalRounds: gameData.totalRounds, discussionOrder: gameData.discussionOrder };
         
         document.getElementById('screen-lobby').classList.add('hidden');
         document.getElementById('screen-reveal').classList.remove('hidden');
@@ -486,7 +477,6 @@
         document.getElementById('discussion-area').classList.add('hidden');
         document.getElementById('vote-phase-btn-area').classList.add('hidden');
         setMyMic(false);
-        muteAllExcept("");
     }
     
     function toggleGameWord() { 
@@ -511,7 +501,6 @@
             document.getElementById('discussion-area').classList.add('hidden');
             document.getElementById('vote-phase-btn-area').classList.remove('hidden');
             setMyMic(false);
-            muteAllExcept("");
             return;
         }
         
@@ -522,17 +511,13 @@
         
         if(speakerName === myName) {
             document.getElementById('end-turn-btn').style.display = "block";
-            document.getElementById('end-turn-btn').classList.add('end-turn-enabled');
             setMyMic(true);
         } else {
             document.getElementById('end-turn-btn').style.display = "block";
-            document.getElementById('end-turn-btn').classList.remove('end-turn-enabled');
             setMyMic(false);
         }
         
-        muteAllExcept(speakerName);
-        
-        let t = 30;
+        let t = 20; // 30 -> 20 saniye
         let timerDiv = document.getElementById('timer-display');
         clearInterval(window.discTimer);
         timerDiv.innerText = t;
@@ -541,17 +526,18 @@
             timerDiv.innerText = t; 
             if(t <= 0) { 
                 clearInterval(window.discTimer); 
-                nextSpeaker();
+                if(speakerName === myName) {
+                    nextSpeaker();
+                }
             } 
         }, 1000);
     }
     
     function runDiscussionClient(idx, speakerName) { runDiscussion(idx, speakerName); }
     
-    // HERKESİN kullanabileceği nextSpeaker fonksiyonu
     function nextSpeaker() {
         clearInterval(window.discTimer);
-        if(currentSpeakerName === myName || isHost) {
+        if(currentSpeakerName === myName) {
             currentSpeakerIdx++;
             if(currentSpeakerIdx < currentGame.discussionOrder.length) {
                 let nextSpeakerName = currentGame.discussionOrder[currentSpeakerIdx];
@@ -563,10 +549,8 @@
                 document.getElementById('discussion-area').classList.add('hidden');
                 document.getElementById('vote-phase-btn-area').classList.remove('hidden');
                 setMyMic(false);
-                muteAllExcept("");
             }
         } else {
-            // Konuşmacı değilim ama lider de değilsem, lidere istek gönder
             let conn = Object.values(connections)[0];
             if(conn) conn.send({ type: 'request_next_speaker', speakerName: currentSpeakerName });
         }
@@ -583,21 +567,34 @@
         startVotingPhase(); 
     }
     
-    function startVotingPhaseClient() {
-        startVotingPhase();
-    }
-    
     function startVotingPhase() {
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('screen-vote').classList.remove('hidden');
         currentGame.votes = {};
         currentGame.playerVotes = {};
-        currentGame.pasCount = 0;
         voteStarted = true;
         hasVoted = false;
         setMyMic(false);
-        muteAllExcept("");
         renderVoteUI();
+        
+        // 12 saniye sonra otomatik sonuç hesaplama (lider yapar)
+        if(isHost) {
+            setTimeout(() => {
+                if(voteStarted) {
+                    let votedCount = Object.keys(currentGame.playerVotes).length;
+                    let totalPlayers = currentGame.playersSnapshot.filter(p => p.alive).length;
+                    if(votedCount < totalPlayers) {
+                        // Oy vermeyenlere PAS ver
+                        for(let p of currentGame.playersSnapshot.filter(p => p.alive)) {
+                            if(!currentGame.playerVotes[p.name]) {
+                                currentGame.playerVotes[p.name] = 'PAS';
+                            }
+                        }
+                    }
+                    calculateResults();
+                }
+            }, 12000);
+        }
     }
     
     function renderVoteUI() {
@@ -609,7 +606,6 @@
         
         document.getElementById('vote-status').innerHTML = `✅ Oy verenler: ${votedCount}/${totalPlayers}`;
         
-        // HERKES oy kullanabilir - sıra beklemeden
         if(!hasVoted) {
             let candidates = alivePlayers.filter(p => p.name !== myName);
             document.getElementById('vote-options').innerHTML = candidates.map(p => `<div class="vote-item" onclick="submitVote('${p.name}')">🔸 ${p.name}</div>`).join('');
@@ -619,7 +615,7 @@
             let timerDiv = document.getElementById('vote-timer');
             timerDiv.innerText = timeLeft;
             voteTimer = setInterval(() => {
-                if(!hasVoted) {
+                if(!hasVoted && voteStarted) {
                     timeLeft--;
                     timerDiv.innerText = timeLeft;
                     if(timeLeft <= 0) {
@@ -633,23 +629,24 @@
             if(voteTimer) clearInterval(voteTimer);
             document.getElementById('vote-timer').innerText = "---";
         }
-        
-        // Tüm oyuncular oy verdi mi kontrol et (lider yapar)
-        if(isHost && votedCount >= totalPlayers) {
-            if(voteTimer) clearInterval(voteTimer);
-            calculateResults();
-        }
     }
     
     function submitVote(target) {
-        if(hasVoted) return;
+        if(hasVoted || !voteStarted) return;
         if(voteTimer) clearInterval(voteTimer);
         hasVoted = true;
         
         if(isHost) {
-            if(target === 'PAS') { currentGame.pasCount++; currentGame.playerVotes[myName] = 'PAS'; }
+            if(target === 'PAS') { currentGame.playerVotes[myName] = 'PAS'; }
             else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[myName] = target; }
             renderVoteUI();
+            
+            // Tüm oyuncular oy verdi mi kontrol et
+            let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
+            let votedCount = Object.keys(currentGame.playerVotes).length;
+            if(votedCount >= alivePlayers.length) {
+                calculateResults();
+            }
         } else {
             let conn = Object.values(connections)[0];
             if(conn) conn.send({ type: 'vote_submit', voter: myName, target });
@@ -659,15 +656,35 @@
     
     function handleVoteSubmission(voter, target) {
         if(!isHost) return;
-        if(currentGame.playerVotes[voter]) return; // Zaten oy verdi
+        if(currentGame.playerVotes[voter]) return;
         
-        if(target === 'PAS') { currentGame.pasCount++; currentGame.playerVotes[voter] = 'PAS'; }
+        if(target === 'PAS') { currentGame.playerVotes[voter] = 'PAS'; }
         else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[voter] = target; }
         renderVoteUI();
+        
+        let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
+        let votedCount = Object.keys(currentGame.playerVotes).length;
+        if(votedCount >= alivePlayers.length) {
+            calculateResults();
+        }
     }
     
     function calculateResults() {
-        let sorted = Object.entries(currentGame.votes).sort((a,b)=>b[1]-a[1]);
+        if(!isHost) return;
+        voteStarted = false;
+        if(voteTimer) clearInterval(voteTimer);
+        
+        let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
+        let voteMap = {};
+        
+        for(let p of alivePlayers) {
+            let vote = currentGame.playerVotes[p.name];
+            if(vote && vote !== 'PAS') {
+                voteMap[vote] = (voteMap[vote] || 0) + 1;
+            }
+        }
+        
+        let sorted = Object.entries(voteMap).sort((a,b)=>b[1]-a[1]);
         let isDraw = sorted.length > 1 && sorted[0][1] === sorted[1][1];
         let resultText = "", resultTitle = "";
         
@@ -713,8 +730,8 @@
         
         let gameEnded = (currentGame.currentRound >= currentGame.totalRounds);
         let resultData = { title: resultTitle, body: resultText, gameEnded, currentRound: currentGame.currentRound, totalRounds: currentGame.totalRounds };
-        if(isHost) { broadcast({ type: 'result_sync', resultData }); showResultScreen(resultData); }
-        else showResultScreen(resultData);
+        broadcast({ type: 'result_sync', resultData });
+        showResultScreen(resultData);
     }
     
     function showResultScreen(data) {
@@ -732,22 +749,36 @@
         });
         document.getElementById('result-scoreboard').innerHTML = scoreHtml;
         
-        document.getElementById('resultNextBtn').innerText = data.gameEnded ? "🏆 SONUÇLARI GÖSTER" : "⏩ SONRAKİ KELİME";
-        if(data.gameEnded) currentGame.roundOver = true;
-        setMyMic(false);
-        muteAllExcept("");
-        voteStarted = false;
-    }
-    
-    function proceedAfterResult() {
-        if(currentGame.roundOver) {
-            showFinalGameResults();
+        if(data.gameEnded) {
+            document.getElementById('next-round-btn-area').classList.add('hidden');
+            document.getElementById('resultNextBtn') ? document.getElementById('resultNextBtn').classList.add('hidden') : null;
         } else {
             if(isHost) {
-                currentGame.currentRound++;
-                startNewRound();
+                document.getElementById('next-round-btn-area').classList.remove('hidden');
+            } else {
+                document.getElementById('next-round-btn-area').classList.add('hidden');
+                document.getElementById('result-body').innerHTML += `<div style="margin-top:10px; color:var(--gold);">⏳ Liderin sonraki kelimeye geçmesini bekleyin...</div>`;
             }
         }
+        
+        setMyMic(false);
+        voteStarted = false;
+        waitingForNextRound = true;
+    }
+    
+    function nextRound() {
+        if(!isHost) return;
+        if(currentGame.currentRound < currentGame.totalRounds) {
+            currentGame.currentRound++;
+            broadcast({ type: 'next_round' });
+            goToNextRound();
+        } else {
+            showFinalGameResults();
+        }
+    }
+    
+    function goToNextRound() {
+        startNewRound();
     }
     
     function startNewRound() {
@@ -779,8 +810,9 @@
         document.getElementById('approveAndContinueBtn').classList.add('hidden');
         document.getElementById('waiting-message').classList.add('hidden');
         
-        currentGame = { mode: currentGame.mode, spyNames, pair, playersSnapshot: JSON.parse(JSON.stringify(players)), votes: {}, playerVotes: {}, pasCount: 0, currentRound: currentGame.currentRound, totalRounds: currentGame.totalRounds, discussionOrder };
+        currentGame = { mode: currentGame.mode, spyNames, pair, playersSnapshot: JSON.parse(JSON.stringify(players)), votes: {}, playerVotes: {}, currentRound: currentGame.currentRound, totalRounds: currentGame.totalRounds, discussionOrder };
         leaderConfirmed = false;
+        waitingForNextRound = false;
         
         broadcast({ type: 'start_game', gameData });
     }
@@ -794,9 +826,14 @@
         });
         document.getElementById('result-body').innerHTML = resultHtml;
         document.getElementById('result-title').innerText = "🎉 OYUN BİTTİ 🎉";
-        document.getElementById('resultNextBtn').innerText = "🏠 LOBİYE DÖN";
+        document.getElementById('next-round-btn-area').classList.add('hidden');
         document.getElementById('result-scoreboard').innerHTML = "";
-        currentGame.roundOver = true;
+        
+        let exitBtn = document.createElement('button');
+        exitBtn.innerText = "🏠 LOBİYE DÖN";
+        exitBtn.className = "btn btn-main";
+        exitBtn.onclick = () => resetToLobby();
+        document.getElementById('result-body').appendChild(exitBtn);
     }
     
     function resetToLobby() { 
@@ -806,11 +843,15 @@
         document.getElementById('screen-reveal').classList.add('hidden');
         document.getElementById('screen-lobby').classList.remove('hidden');
         setMyMic(false);
-        muteAllExcept("");
         renderLobby(); 
         broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:true, mic:p.mic })) });
+        broadcast({ type: 'reset_to_lobby' });
         voteStarted = false;
         hasVoted = false;
+        waitingForNextRound = false;
+        discussionActive = false;
+        if(voteTimer) clearInterval(voteTimer);
+        if(window.discTimer) clearInterval(window.discTimer);
     }
 </script>
 </body>
