@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V15 | SON</title>
+    <title>GAFİL KÖSTEBEK | V16 | SOHBET + SERBEST MİKROFON</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -50,15 +50,33 @@
         .leader-approve-btn { background: var(--green); color: white; margin-top: 10px; }
         .rule-note { background: #0a0a0a; padding: 8px; border-radius: 15px; font-size: 0.7em; color: var(--gold); margin-top: 10px; }
         .reveal-word-box { background: #0f0f0f; border: 2px solid var(--gold); padding: 20px; font-size: 1.8em; margin: 15px 0; border-radius: 20px; }
+        
+        /* Sohbet stilleri */
+        .chat-container { background: #0a0a0a; border-radius: 20px; margin-top: 15px; padding: 8px; border: 1px solid #333; }
+        .chat-messages { height: 120px; overflow-y: auto; font-size: 0.7em; text-align: left; padding: 5px; background: #111; border-radius: 12px; margin-bottom: 5px; }
+        .chat-message { padding: 3px 5px; border-bottom: 1px solid #222; word-wrap: break-word; }
+        .chat-sender { color: var(--gold); font-weight: bold; }
+        .chat-input-area { display: flex; gap: 6px; }
+        .chat-input { flex: 1; background: #1a1a1a; border: none; color: white; padding: 8px; border-radius: 20px; font-size: 0.7em; margin: 0; }
+        .chat-send { background: var(--gold); color: black; border: none; border-radius: 20px; padding: 8px 12px; font-size: 0.7em; cursor: pointer; margin: 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- Sohbet container - her menüde görünecek -->
+    <div id="chat-container" class="chat-container hidden">
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Sohbet mesajı..." maxlength="100">
+            <button class="chat-send" onclick="sendChatMessage()">GÖNDER</button>
+        </div>
+    </div>
+
     <div id="screen-lobby">
-        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Beraberlikte KÖSTEBEK kazanır. HERKES oy kullanır, KONUŞAN kişi sözü devredebilir! 🎲</div></div>
-        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V15]</span></h1>
-        <div class="author">M. RIDVAN SAYGIN | SON</div>
+        <div class="marquee-rules"><div class="marquee-content">🎧 3-6 oyuncu 1 köstebek, 7-10 oyuncu 2 köstebek. Beraberlikte KÖSTEBEK kazanır. LOBİDE HERKES KONUŞABİLİR! 🎲</div></div>
+        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em; color:var(--gold);">[V16]</span></h1>
+        <div class="author">M. RIDVAN SAYGIN | SOHBET + SERBEST MİKROFON</div>
         
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
@@ -163,6 +181,17 @@
 
     async function getMedia() { localStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
 
+    // Mikrofonu aç/kapat (lobide serbest)
+    function toggleMyMic() {
+        if(localStream) {
+            let enabled = localStream.getAudioTracks()[0].enabled;
+            localStream.getAudioTracks()[0].enabled = !enabled;
+            let p = players.find(x => x.name === myName);
+            if(p) p.mic = !enabled;
+            renderLobby();
+        }
+    }
+
     function updateRemoteMute(remoteName, isMuted) {
         if(remoteStreams[remoteName] && remoteStreams[remoteName].audioElement) {
             remoteStreams[remoteName].audioElement.muted = isMuted;
@@ -184,6 +213,37 @@
         if(p) { p.mic = isSpeaker; renderLobby(); }
     }
 
+    // Sohbet
+    function sendChatMessage() {
+        let input = document.getElementById('chat-input');
+        let msg = input.value.trim();
+        if(msg === "") return;
+        input.value = "";
+        let chatData = { type: 'chat', sender: myName, message: msg };
+        broadcast(chatData);
+        addChatMessage(myName, msg);
+    }
+
+    function addChatMessage(sender, message) {
+        let container = document.getElementById('chat-messages');
+        let div = document.createElement('div');
+        div.className = 'chat-message';
+        div.innerHTML = `<span class="chat-sender">${sender}:</span> ${escapeHtml(message)}`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        // 50 mesajda temizlik
+        while(container.children.length > 50) container.removeChild(container.firstChild);
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if(m === '&') return '&amp;';
+            if(m === '<') return '&lt;';
+            if(m === '>') return '&gt;';
+            return m;
+        });
+    }
+
     function odaKur() {
         myName = document.getElementById('nameInput').value.trim();
         if(!myName || myName.length < 2) { alert("Geçerli isim girin"); return; }
@@ -198,7 +258,9 @@
             document.getElementById('share-link').value = link;
             players = [{ name: myName, score: 0, word: "", alive: true, mic: true }];
             renderLobby();
-            setMyMic(false);
+            setMyMic(true); // LOBİDE MİKROFON AÇIK
+            // Sohbet container'ını göster
+            document.getElementById('chat-container').classList.remove('hidden');
         }).catch(e => alert("Mikrofon izni gerekli!"));
     }
 
@@ -236,7 +298,7 @@
     function handleDataMessage(d, conn) {
         if(d.type === 'join') {
             if(!players.find(p => p.name === d.name)) {
-                players.push({ name: d.name, score: 0, word: "", alive: true, mic: false });
+                players.push({ name: d.name, score: 0, word: "", alive: true, mic: true }); // lobide mikrofon açık
                 connections[d.name] = conn;
                 broadcast({ type: 'sync', players: players.map(p => ({ name:p.name, score:p.score, alive:p.alive, mic:p.mic })) });
                 renderLobby();
@@ -270,6 +332,9 @@
         else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
         else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
         else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
+        else if(d.type === 'chat') {
+            addChatMessage(d.sender, d.message);
+        }
     }
 
     function refreshPlayers() { if(isHost) { broadcast({ type: 'sync', players: players.map(p => ({ name:p.name, score:p.score, alive:p.alive, mic:p.mic })) }); renderLobby(); } }
@@ -285,7 +350,7 @@
             return `<div class="player-card ${rankClass}">
                         <div class="player-info">👤 <b>${p.name}</b> <span style="background:#222; padding:2px 8px; border-radius:40px;">🎯 ${p.score}</span></div>
                         <div>
-                            <button class="mic-btn ${micStatus}" style="cursor:default;">${micText}</button>
+                            ${p.name === myName ? `<button class="mic-btn ${micStatus}" onclick="toggleMyMic()">${micText}</button>` : `<button class="mic-btn ${micStatus}" style="cursor:default;">${micText}</button>`}
                             ${p.name !== myName ? `<button class="${volumeBtnClass}" onclick="toggleMutePlayer('${p.name}')">${volumeBtnText}</button>` : ''}
                             <button class="exit-btn" onclick="removePlayer('${p.name}')">✖️</button>
                         </div>
@@ -322,7 +387,8 @@
             conn.on('data', d => handleDataMessage(d, conn));
             document.getElementById('setup-area').classList.add('hidden');
             document.getElementById('lobby-area').classList.remove('hidden');
-            setMyMic(false);
+            setMyMic(true); // LOBİDE MİKROFON AÇIK
+            document.getElementById('chat-container').classList.remove('hidden');
         });
         peer.on('call', call => {
             call.answer(localStream);
@@ -392,6 +458,9 @@
         document.getElementById('approveAndContinueBtn').classList.add('hidden');
         document.getElementById('waiting-message').classList.add('hidden');
         
+        // Oyun başlayınca lobideki serbest mikrofonu kapat, oyun içi sıra ile açılacak
+        setMyMic(false);
+        
         broadcast({ type: 'start_game', gameData: { mode, pair, spyNames, discussionOrder, playersList: players.map(p => ({ name:p.name, score:p.score, alive:true, word:p.word })), totalRounds } });
     }
     
@@ -410,6 +479,7 @@
         document.getElementById('approveAndContinueBtn').classList.add('hidden');
         document.getElementById('waiting-message').classList.remove('hidden');
         leaderConfirmed = false;
+        setMyMic(false);
     }
     
     function revealMyWord() {
@@ -517,7 +587,7 @@
             setMyMic(false);
         }
         
-        let t = 20; // 30 -> 20 saniye
+        let t = 20;
         let timerDiv = document.getElementById('timer-display');
         clearInterval(window.discTimer);
         timerDiv.innerText = t;
@@ -577,15 +647,13 @@
         setMyMic(false);
         renderVoteUI();
         
-        // 12 saniye sonra otomatik sonuç hesaplama (lider yapar)
         if(isHost) {
             setTimeout(() => {
                 if(voteStarted) {
+                    let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
                     let votedCount = Object.keys(currentGame.playerVotes).length;
-                    let totalPlayers = currentGame.playersSnapshot.filter(p => p.alive).length;
-                    if(votedCount < totalPlayers) {
-                        // Oy vermeyenlere PAS ver
-                        for(let p of currentGame.playersSnapshot.filter(p => p.alive)) {
+                    if(votedCount < alivePlayers.length) {
+                        for(let p of alivePlayers) {
                             if(!currentGame.playerVotes[p.name]) {
                                 currentGame.playerVotes[p.name] = 'PAS';
                             }
@@ -641,7 +709,6 @@
             else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[myName] = target; }
             renderVoteUI();
             
-            // Tüm oyuncular oy verdi mi kontrol et
             let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
             let votedCount = Object.keys(currentGame.playerVotes).length;
             if(votedCount >= alivePlayers.length) {
@@ -751,7 +818,6 @@
         
         if(data.gameEnded) {
             document.getElementById('next-round-btn-area').classList.add('hidden');
-            document.getElementById('resultNextBtn') ? document.getElementById('resultNextBtn').classList.add('hidden') : null;
         } else {
             if(isHost) {
                 document.getElementById('next-round-btn-area').classList.remove('hidden');
@@ -813,6 +879,7 @@
         currentGame = { mode: currentGame.mode, spyNames, pair, playersSnapshot: JSON.parse(JSON.stringify(players)), votes: {}, playerVotes: {}, currentRound: currentGame.currentRound, totalRounds: currentGame.totalRounds, discussionOrder };
         leaderConfirmed = false;
         waitingForNextRound = false;
+        setMyMic(false);
         
         broadcast({ type: 'start_game', gameData });
     }
@@ -842,7 +909,7 @@
         document.getElementById('screen-result').classList.add('hidden');
         document.getElementById('screen-reveal').classList.add('hidden');
         document.getElementById('screen-lobby').classList.remove('hidden');
-        setMyMic(false);
+        setMyMic(true); // Lobiye dönünce mikrofonu aç
         renderLobby(); 
         broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:true, mic:p.mic })) });
         broadcast({ type: 'reset_to_lobby' });
