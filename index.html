@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V26 | FULL MESH SES</title>
+    <title>GAFİL KÖSTEBEK | V27 | LOBİDE SOYBET BUTONU</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -14,6 +14,7 @@
         .btn-gafil{background:#ffd700;color:#000}
         .btn-katil{background:#ff4d4d;color:#fff}
         .btn-exit{background:#330000;color:#ff8888;border:1px solid #800}
+        .btn-chat{background:#2e7d32;color:#fff}
         input{width:100%;padding:14px;margin:8px 0;border-radius:28px;background:#1a1a1a;color:#fff;border:1px solid #333;text-align:center}
         .player-card{background:#151515;padding:12px;margin:8px 0;border-radius:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
         .word-box{background:#0f0f0f;border:3px dashed #555;padding:40px 10px;font-size:2.2em;margin:20px 0;border-radius:28px;color:#ffd700}
@@ -37,7 +38,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[SESLİ V26]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[SESLİ V27]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -49,7 +50,7 @@
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 pasta eleme yok &nbsp;|&nbsp; ⚖️ Beraberlikte köstebek kazanır</p>
-                <p>🎙️ Lobide herkes konuşabilir. Oyun sırasında sadece sıradaki konuşmacının mikrofonu açılır.</p>
+                <p>🎙️ Lider "SOYBET AÇ/KAPAT" butonuyla lobide serbest konuşmayı başlatır/durdurur.</p>
             </div>
         </div>
         <div id="lobby-area" class="hidden">
@@ -59,6 +60,7 @@
                 <select id="roundCountSelect"><option value="5">5 Kelime</option><option value="10" selected>10 Kelime</option><option value="15">15 Kelime</option></select>
                 <button class="btn btn-gafil" onclick="oyunuBaslat('gafil')">🎭 GAFİL MODU</button>
                 <button class="btn btn-katil" onclick="oyunuBaslat('katil')">🔪 KATİL MODU</button>
+                <button id="lobbyChatBtn" class="btn btn-chat" onclick="toggleLobbyChat()">🎙️ SOYBET AÇ</button>
             </div>
             <div><span>👥 BAĞLI: <span id="lobby-count">0</span></span></div>
         </div>
@@ -106,13 +108,14 @@
 </div>
 
 <script>
-/// ========== 2. PARÇA: FULL MESH SES + DATA ==========
+/// ========== 2. PARÇA: FULL MESH SES + LOBİ SOYBET ==========
 let peer, myId, myName, isHost = false;
 let players = [];          // { name, score, word, alive, peerId }
-let connections = {};      // isme göre data connection
-let remoteStreams = {};    // isme göre audio element
+let connections = {};
+let remoteStreams = {};
 let localStream = null;
 let myMicEnabled = true;
+let lobbyChatActive = false;   // lobide serbest konuşma açık mı?
 let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
 let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, leaderTimer = null, currentTime = 30;
 
@@ -133,11 +136,34 @@ function callAllPlayers() {
                     let audio = new Audio();
                     audio.srcObject = remoteStream;
                     audio.autoplay = true;
-                    audio.muted = true;
+                    audio.muted = true;  // başlangıçta sessiz
                     remoteStreams[p.name] = audio;
                 }
             });
         }
+    }
+}
+// Lobi sohbetini aç/kapat (sadece lider çağırır)
+function toggleLobbyChat() {
+    if(!isHost) return;
+    lobbyChatActive = !lobbyChatActive;
+    const btn = document.getElementById('lobbyChatBtn');
+    if(lobbyChatActive) {
+        btn.innerHTML = "🔇 SOYBET KAPAT";
+        btn.style.background = "#800";
+        // Kendi mikrofonunu aç
+        toggleLocalMic(true);
+        // Tüm uzak seslerin susturmasını kaldır
+        for(let name in remoteStreams) remoteStreams[name].muted = false;
+        broadcast({ type: 'lobby_chat_on' });
+    } else {
+        btn.innerHTML = "🎙️ SOYBET AÇ";
+        btn.style.background = "#2e7d32";
+        // Kendi mikrofonunu kapat
+        toggleLocalMic(false);
+        // Tüm uzak sesleri sustur
+        for(let name in remoteStreams) remoteStreams[name].muted = true;
+        broadcast({ type: 'lobby_chat_off' });
     }
 }
 function odaKur() {
@@ -208,6 +234,20 @@ function handleDataMessage(d, conn) {
             if(localStream) callAllPlayers();
         }
     } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); callAllPlayers(); }
+    else if(d.type === 'lobby_chat_on') {
+        if(!isHost) {
+            lobbyChatActive = true;
+            toggleLocalMic(true);
+            for(let name in remoteStreams) remoteStreams[name].muted = false;
+        }
+    }
+    else if(d.type === 'lobby_chat_off') {
+        if(!isHost) {
+            lobbyChatActive = false;
+            toggleLocalMic(false);
+            for(let name in remoteStreams) remoteStreams[name].muted = true;
+        }
+    }
     else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
     else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
     else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
@@ -256,7 +296,7 @@ function exitToLobby() { if(confirm("Çık?")) resetToLobby(); }
 function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive, peerId:p.peerId })) }); renderLobby(); } }
 const urlParams=new URLSearchParams(window.location.search); const joinId=urlParams.get('join');
 if(joinId) { document.getElementById('setup-area').innerHTML = `<input type="text" id="nameInput" placeholder="Adınız"><button class="btn btn-main" onclick="initMicrophone().then(()=>odayaKatil('${joinId}'))">🎧 KATIL</button>`; }
-/// ========== 3. PARÇA: OYUN MEKANİĞİ (LİDER SIRA) ==========
+/// ========== 3. PARÇA: OYUN MEKANİĞİ ==========
 const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
 let fullHavuz = kelimeHavuzu;
 
@@ -271,6 +311,8 @@ function createRandomDiscussionOrder(playersList,mode,spyNames){
 }
 function oyunuBaslat(mode){
     if(players.length<3) return;
+    // Oyun başlayınca lobi sohbetini kapat (eğer açıksa)
+    if(isHost && lobbyChatActive) toggleLobbyChat();
     let totalRounds=parseInt(document.getElementById('roundCountSelect').value);
     let pairIndex=Math.floor(Math.random()*fullHavuz.length), pair=fullHavuz[pairIndex];
     let mCount=players.length>=7?2:1, shuffled=[...players];
@@ -321,6 +363,7 @@ function finishRevealAndStartGame(){
     if(isHost) document.getElementById('host-action').classList.remove('hidden');
     document.getElementById('discussion-area').classList.add('hidden');
     document.getElementById('vote-phase-btn-area').classList.add('hidden');
+    // Oyun başlayınca tüm sesleri kapat (sohbet kapatıldı)
     toggleLocalMic(false);
     for(let name in remoteStreams) remoteStreams[name].muted = true;
 }
@@ -517,6 +560,8 @@ function resetToLobby(){
     document.getElementById('screen-result').classList.add('hidden');
     document.getElementById('screen-reveal').classList.add('hidden');
     document.getElementById('screen-lobby').classList.remove('hidden');
+    // Lobiye dönünce sohbet kapalı olarak başlar (lider isterse açar)
+    if(isHost && lobbyChatActive) toggleLobbyChat(); // kapat
     renderLobby();
     broadcast({type:'sync',players:players.map(p=>({name:p.name,score:p.score,alive:true,peerId:p.peerId}))});
     broadcast({type:'reset_to_lobby'});
