@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V22 | SENKRON SÜRE</title>
+    <title>GAFİL KÖSTEBEK | SESLİ V23</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -30,11 +30,14 @@
         .rule-box{background:#1a1a1a;border-radius:20px;padding:10px;margin:15px 0 5px;font-size:0.7em;text-align:left;color:#ccc;border:1px solid #333}
         .speaker-indicator{background:#2e7d32;color:#fff;padding:4px 10px;border-radius:20px;font-size:0.7em;display:inline-block;margin-left:8px}
         .sub{color:#888;font-size:0.6em;margin-top:-5px;margin-bottom:10px}
+        .mic-toggle { background:#444; border:none; color:white; padding:5px 12px; border-radius:30px; font-size:0.7em; cursor:pointer; margin-left:8px; }
+        .mic-on { background:#2e7d32; }
+        .mic-off { background:#ff4d4d; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[SESLİ]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -42,10 +45,11 @@
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
             <div class="rule-box">
-                <p>🗣️ <strong>İsmi yazan kişi konuşur, lider sözü devreder.</strong></p>
+                <p>🗣️ <strong>Konuşan oyuncu "Sözü Devret" butonuna basar, sıra otomatik geçer.</strong></p>
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 pasta eleme yok &nbsp;|&nbsp; ⚖️ Beraberlikte köstebek kazanır</p>
+                <p>🎙️ Lobide herkes konuşabilir. Oyun sırasında sadece sıradaki konuşmacının mikrofonu açılır.</p>
             </div>
         </div>
         <div id="lobby-area" class="hidden">
@@ -84,7 +88,7 @@
         <div id="discussion-area" class="hidden">
             <div id="speaker-name">🎤 --- <span class="speaker-indicator">KONUŞUYOR</span></div>
             <div id="timer-display">30</div>
-            <div id="leader-next-speaker-area" class="hidden"><button class="btn btn-main" onclick="nextSpeaker()">⏩ SÖZÜ DEVRET (LİDER)</button></div>
+            <button id="next-speaker-btn" class="btn btn-main" onclick="requestNextSpeaker()">⏩ SÖZÜ DEVRET</button>
         </div>
         <div id="vote-phase-btn-area" class="hidden"><button class="btn btn-katil" onclick="goToVotePhase()">🗳️ OYLAMAYA GEÇ</button></div>
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
@@ -109,19 +113,77 @@
 </div>
 
 <script>
-      // ======================= PEERJS (iPhone secure) =======================
-    let peer, myId, myName, isHost = false;
-    let players = [], connections = {};
-    let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
-    let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, leaderTimer = null, currentTime = 30;
+// ======================= PEERJS (SES + DATA) =======================
+let peer, myId, myName, isHost = false;
+let players = [], connections = {}, remoteStreams = {};
+let localStream = null;
+let myMicEnabled = true;
+let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
+let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, leaderTimer = null, currentTime = 30;
 
-    function odaKur() {
-        myName = document.getElementById('nameInput').value.trim();
-        if(!myName || myName.length<2) { alert("Geçerli isim"); return; }
-        isHost = true;
-        myId = "KST-"+Math.random().toString(36).substr(2,6).toUpperCase();
-        peer = new Peer(myId, { secure: true });
-        peer.on('connection', c => { c.on('data', d => handleDataMessage(d, c)); c.on('close', () => refreshPlayers()); });
+// Mikrofon izni ve yerel ses akışı
+async function initMicrophone() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!isHost) {
+            // Lider değilsek mikrofonu kapat (lobi konuşması için isteğe bağlı, başlangıçta kapalı)
+            toggleLocalMic(false);
+        } else {
+            toggleLocalMic(true);
+        }
+    } catch(e) { console.log("Mikrofon izni gerekli", e); }
+}
+
+function toggleLocalMic(enable) {
+    if(localStream) {
+        localStream.getAudioTracks().forEach(track => track.enabled = enable);
+        myMicEnabled = enable;
+        // UI güncelleme lobide yapılacak
+        renderLobby();
+    }
+}
+
+// Oyuncu listesinde mikrofon butonu göster
+function renderLobby() {
+    const sorted = [...players].sort((a,b)=>b.score-a.score);
+    document.getElementById('player-list').innerHTML = sorted.map((p,idx)=> {
+        let rankClass = idx===0?'rank-0':idx===1?'rank-1':idx===2?'rank-2':'';
+        let micBtn = "";
+        if(p.name === myName) {
+            let micClass = myMicEnabled ? "mic-on" : "mic-off";
+            let micText = myMicEnabled ? "🎙️ AÇIK" : "🔇 KAPALI";
+            micBtn = `<button class="mic-toggle ${micClass}" onclick="toggleLocalMic(!myMicEnabled)">${micText}</button>`;
+        }
+        return `<div class="player-card ${rankClass}"><div>👤 <b>${p.name}</b> 🎯 ${p.score}</div><div>${micBtn}</div></div>`;
+    }).join('');
+    document.getElementById('lobby-count').innerText = players.length;
+    if(isHost && players.length>=3) document.getElementById('host-controls').classList.remove('hidden');
+    else if(isHost) document.getElementById('host-controls').classList.add('hidden');
+}
+
+// Liderin oda kurması
+function odaKur() {
+    myName = document.getElementById('nameInput').value.trim();
+    if(!myName || myName.length<2) { alert("Geçerli isim"); return; }
+    isHost = true;
+    myId = "KST-"+Math.random().toString(36).substr(2,6).toUpperCase();
+    peer = new Peer(myId, { secure: true });
+    peer.on('connection', c => { c.on('data', d => handleDataMessage(d, c)); c.on('close', () => refreshPlayers()); });
+    peer.on('call', call => {
+        call.answer(localStream);
+        call.on('stream', remoteStream => {
+            let remoteName = call.metadata?.name || "unknown";
+            if(!remoteStreams[remoteName]) {
+                let audio = new Audio();
+                audio.srcObject = remoteStream;
+                audio.autoplay = true;
+                remoteStreams[remoteName] = audio;
+                // Başlangıçta tüm uzak sesleri kapat (oyun başlayınca konuşmacıya göre açılacak)
+                audio.muted = true;
+            }
+        });
+    });
+    initMicrophone().then(() => {
         document.getElementById('setup-area').classList.add('hidden');
         document.getElementById('lobby-area').classList.remove('hidden');
         document.getElementById('host-controls').classList.remove('hidden');
@@ -129,339 +191,422 @@
         document.getElementById('share-link').value = link;
         players = [{ name: myName, score: 0, word: "", alive: true }];
         renderLobby();
-    }
-    function kopyalaLink() { let l=document.getElementById('share-link'); l.select(); navigator.clipboard.writeText(l.value); alert("Kopyalandı"); }
-    function exitToLobby() { if(confirm("Çık?")) resetToLobby(); }
-    function handleDataMessage(d, conn) {
-        if(d.type === 'join') {
-            if(!players.find(p=>p.name===d.name)) {
-                players.push({ name: d.name, score: 0, word: "", alive: true });
-                connections[d.name] = conn;
-                broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) });
-                renderLobby();
-            }
-        } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); }
-        else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
-        else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
-        else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
-        else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
-        else if(d.type === 'disc_start') { 
-            if(!isHost) {
-                currentSpeakerName = d.speakerName;
-                document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
-                document.getElementById('discussion-area').classList.remove('hidden');
-                // Süre sıfırlanır, liderden gelecek timer_update ile güncellenecek
-                document.getElementById('timer-display').innerText = "30";
-            }
-        }
-        else if(d.type === 'timer_update') {
-            // Tüm oyuncular (lider dahil) timer'ı günceller - sadece ekran güncellemesi
-            if(document.getElementById('timer-display')) {
-                document.getElementById('timer-display').innerText = d.time;
-            }
-        }
-        else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
-        else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
-        else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
-        else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
-    }
-    function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
-    function renderLobby() {
-        const sorted = [...players].sort((a,b)=>b.score-a.score);
-        document.getElementById('player-list').innerHTML = sorted.map((p,idx)=> `<div class="player-card ${idx===0?'rank-0':idx===1?'rank-1':idx===2?'rank-2':''}"><div>👤 <b>${p.name}</b> 🎯 ${p.score}</div></div>`).join('');
-        document.getElementById('lobby-count').innerText = players.length;
-        if(isHost && players.length>=3) document.getElementById('host-controls').classList.remove('hidden');
-        else if(isHost) document.getElementById('host-controls').classList.add('hidden');
-    }
-    function broadcast(data) { if(isHost) Object.values(connections).forEach(c=>c.send(data)); }
-    const urlParams=new URLSearchParams(window.location.search); const joinId=urlParams.get('join');
-    if(joinId) { document.getElementById('setup-area').innerHTML = `<input type="text" id="nameInput" placeholder="Adınız"><button class="btn btn-main" onclick="odayaKatil('${joinId}')">🎧 KATIL</button>`; }
-    function odayaKatil(id) {
-        myName = document.getElementById('nameInput').value.trim();
-        if(!myName) return;
-        peer = new Peer({ secure: true });
-        peer.on('open', () => {
-            const conn = peer.connect(id);
-            conn.on('open', () => conn.send({ type: 'join', name: myName }));
-            conn.on('data', d => handleDataMessage(d, conn));
+    });
+}
+
+// Diğer oyuncuların katılması
+function odayaKatil(id) {
+    myName = document.getElementById('nameInput').value.trim();
+    if(!myName) return;
+    peer = new Peer({ secure: true });
+    peer.on('open', () => {
+        const conn = peer.connect(id);
+        conn.on('open', () => conn.send({ type: 'join', name: myName }));
+        conn.on('data', d => handleDataMessage(d, conn));
+        // Liderden gelen çağrıyı cevapla
+        peer.on('call', call => {
+            call.answer(localStream);
+            call.on('stream', remoteStream => {
+                let remoteName = call.metadata?.name || "unknown";
+                if(!remoteStreams[remoteName]) {
+                    let audio = new Audio();
+                    audio.srcObject = remoteStream;
+                    audio.autoplay = true;
+                    remoteStreams[remoteName] = audio;
+                    audio.muted = true;
+                }
+            });
+        });
+        initMicrophone().then(() => {
             document.getElementById('setup-area').classList.add('hidden');
             document.getElementById('lobby-area').classList.remove('hidden');
+            renderLobby();
         });
-    }
+    });
+}
 
-    // ----------------------------- OYUN MEKANİĞİ -----------------------------
-    const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
-    let fullHavuz = kelimeHavuzu;
-    function createRandomDiscussionOrder(playersList,mode,spyNames){
-        let pn=playersList.map(p=>p.name);
-        if(mode==='katil' && spyNames.length>0){
-            let spies=pn.filter(n=>spyNames.includes(n)), non=pn.filter(n=>!spyNames.includes(n));
-            for(let i=spies.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[spies[i],spies[j]]=[spies[j],spies[i]];}
-            for(let i=non.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[non[i],non[j]]=[non[j],non[i]];}
-            return [...non,...spies];
-        } else { let order=[...pn]; for(let i=order.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];} return order; }
-    }
-    function oyunuBaslat(mode){
-        if(players.length<3) return;
-        let totalRounds=parseInt(document.getElementById('roundCountSelect').value);
-        let pairIndex=Math.floor(Math.random()*fullHavuz.length), pair=fullHavuz[pairIndex];
-        let mCount=players.length>=7?2:1, shuffled=[...players];
-        for(let i=shuffled.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
-        let spyNames=[]; for(let i=0;i<mCount;i++) spyNames.push(shuffled[i].name);
-        let discussionOrder=createRandomDiscussionOrder(players,mode,spyNames);
-        for(let p of players){ let isSpy=spyNames.includes(p.name); p.word=isSpy?(mode==='katil'?"???":pair[1]):pair[0]; if(p.name===myName) myAssignedWord=p.word; }
-        currentGame={mode,spyNames,pair,playersSnapshot:JSON.parse(JSON.stringify(players)),votes:{},playerVotes:{},currentRound:1,totalRounds,discussionOrder};
-        leaderConfirmed=false;
-        document.getElementById('screen-lobby').classList.add('hidden');
-        document.getElementById('screen-reveal').classList.remove('hidden');
-        document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
-        document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.remove('hidden');
-        document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.add('hidden');
-        broadcast({type:'start_game',gameData:{mode,pair,spyNames,discussionOrder,playersList:players.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds}});
-    }
-    function startGameFromHost(gameData){
-        for(let p of gameData.playersList) if(p.name===myName) myAssignedWord=p.word;
-        currentGame={mode:gameData.mode,spyNames:gameData.spyNames,pair:gameData.pair,playersSnapshot:gameData.playersList,votes:{},playerVotes:{},currentRound:1,totalRounds:gameData.totalRounds,discussionOrder:gameData.discussionOrder};
-        document.getElementById('screen-lobby').classList.add('hidden');
-        document.getElementById('screen-reveal').classList.remove('hidden');
-        document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
-        document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.add('hidden');
-        document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.remove('hidden');
-        leaderConfirmed=false;
-    }
-    function revealMyWord(){
-        let d=document.getElementById('my-reveal-word');
-        if(d.classList.contains('hidden')){ d.innerText=myAssignedWord; d.classList.remove('hidden'); document.getElementById('revealBtn').innerText="🔒 GİZLE"; }
-        else{ d.classList.add('hidden'); document.getElementById('revealBtn').innerText="👁️ GÖR"; if(isHost){ leaderConfirmed=true; document.getElementById('revealBtn').classList.add('hidden'); document.getElementById('changeBtn').classList.add('hidden'); document.getElementById('approveBtn').classList.remove('hidden'); document.getElementById('waiting-message').classList.add('hidden'); } }
-    }
-    function changeWord(){
-        if(isHost && !leaderConfirmed){
-            let newPair=fullHavuz[Math.floor(Math.random()*fullHavuz.length)];
-            currentGame.pair=newPair;
-            for(let p of currentGame.playersSnapshot){ let isSpy=currentGame.spyNames.includes(p.name); p.word=isSpy?(currentGame.mode==='katil'?"???":newPair[1]):newPair[0]; if(p.name===myName) myAssignedWord=p.word; let orig=players.find(pp=>pp.name===p.name); if(orig) orig.word=p.word; }
-            document.getElementById('my-reveal-word').innerText=myAssignedWord; document.getElementById('my-reveal-word').classList.add('hidden'); document.getElementById('revealBtn').innerText="👁️ GÖR";
-            broadcast({type:'start_game',gameData:{mode:currentGame.mode,pair:newPair,spyNames:currentGame.spyNames,discussionOrder:currentGame.discussionOrder,playersList:currentGame.playersSnapshot.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds:currentGame.totalRounds}});
+function handleDataMessage(d, conn) {
+    if(d.type === 'join') {
+        if(!players.find(p=>p.name===d.name)) {
+            players.push({ name: d.name, score: 0, word: "", alive: true });
+            connections[d.name] = conn;
+            broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) });
+            renderLobby();
+            // Lider olarak yeni oyuncuyu ara
+            if(isHost && localStream) {
+                const call = peer.call(conn.peer, localStream, { metadata: { name: myName } });
+                call.on('stream', remoteStream => {
+                    if(!remoteStreams[d.name]) {
+                        let audio = new Audio();
+                        audio.srcObject = remoteStream;
+                        audio.autoplay = true;
+                        remoteStreams[d.name] = audio;
+                        audio.muted = true;
+                    }
+                });
+            }
+        }
+    } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); }
+    else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
+    else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
+    else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
+    else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
+    else if(d.type === 'request_next_speaker') { 
+        if(isHost && discussionActive && currentSpeakerName === d.speakerName) {
+            nextSpeaker();
         }
     }
-    function approveAndStartGame(){ if(isHost && leaderConfirmed){ broadcast({type:'game_started'}); finishRevealAndStartGame(); } }
-    function finishRevealAndStartGame(){
-        document.getElementById('screen-reveal').classList.add('hidden');
-        document.getElementById('screen-game').classList.remove('hidden');
-        document.getElementById('wordCounter').innerHTML=`📖 ${currentGame.currentRound}/${currentGame.totalRounds}`;
-        document.getElementById('game-word-box').innerText=myAssignedWord;
-        document.getElementById('game-word-box').classList.remove('hidden');
-        if(isHost) document.getElementById('host-action').classList.remove('hidden');
-        document.getElementById('discussion-area').classList.add('hidden');
-        document.getElementById('vote-phase-btn-area').classList.add('hidden');
+    else if(d.type === 'disc_start') { 
+        if(!isHost) {
+            currentSpeakerName = d.speakerName;
+            document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
+            document.getElementById('discussion-area').classList.remove('hidden');
+            document.getElementById('timer-display').innerText = "30";
+            // Mikrofon kontrolü: eğer konuşmacı ben isem mikrofonumu aç, değilse kapat
+            if(d.speakerName === myName) {
+                toggleLocalMic(true);
+                // Diğerlerinin sesini kapat
+                for(let name in remoteStreams) remoteStreams[name].muted = true;
+            } else {
+                toggleLocalMic(false);
+                // Konuşmacının sesini aç
+                if(remoteStreams[d.speakerName]) remoteStreams[d.speakerName].muted = false;
+            }
+        }
     }
-    function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
-    
-    // ---------- LİDER MERKEZLİ TARTIŞMA (Sadece lider söz devreder, timer senkron) ----------
-    function startDiscussion(){
-        if(discussionActive) return;
-        discussionActive = true;
-        currentSpeakerIdx = 0;
+    else if(d.type === 'timer_update') {
+        if(document.getElementById('timer-display')) {
+            document.getElementById('timer-display').innerText = d.time;
+        }
+    }
+    else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
+    else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
+    else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
+    else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
+    else if(d.type === 'set_speaker_mic') {
+        if(!isHost && d.speakerName === myName) toggleLocalMic(true);
+        else if(!isHost && d.speakerName !== myName) toggleLocalMic(false);
+        // Konuşmacının sesini aç
+        if(remoteStreams[d.speakerName]) remoteStreams[d.speakerName].muted = false;
+        // Diğerlerinin sesini kapat
+        for(let name in remoteStreams) {
+            if(name !== d.speakerName) remoteStreams[name].muted = true;
+        }
+    }
+}
+
+function broadcast(data) { if(isHost) Object.values(connections).forEach(c=>c.send(data)); }
+
+const urlParams=new URLSearchParams(window.location.search); const joinId=urlParams.get('join');
+if(joinId) { document.getElementById('setup-area').innerHTML = `<input type="text" id="nameInput" placeholder="Adınız"><button class="btn btn-main" onclick="initMicrophone().then(()=>odayaKatil('${joinId}'))">🎧 KATIL</button>`; }
+
+function kopyalaLink() { let l=document.getElementById('share-link'); l.select(); navigator.clipboard.writeText(l.value); alert("Kopyalandı"); }
+function exitToLobby() { if(confirm("Çık?")) resetToLobby(); }
+function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
+/// ======================= OYUN MEKANİĞİ (KELİME, TARTIŞMA, OYLAMA) =======================
+const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
+let fullHavuz = kelimeHavuzu;
+
+function createRandomDiscussionOrder(playersList,mode,spyNames){
+    let pn=playersList.map(p=>p.name);
+    if(mode==='katil' && spyNames.length>0){
+        let spies=pn.filter(n=>spyNames.includes(n)), non=pn.filter(n=>!spyNames.includes(n));
+        for(let i=spies.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[spies[i],spies[j]]=[spies[j],spies[i]];}
+        for(let i=non.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[non[i],non[j]]=[non[j],non[i]];}
+        return [...non,...spies];
+    } else { let order=[...pn]; for(let i=order.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];} return order; }
+}
+
+function oyunuBaslat(mode){
+    if(players.length<3) return;
+    let totalRounds=parseInt(document.getElementById('roundCountSelect').value);
+    let pairIndex=Math.floor(Math.random()*fullHavuz.length), pair=fullHavuz[pairIndex];
+    let mCount=players.length>=7?2:1, shuffled=[...players];
+    for(let i=shuffled.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+    let spyNames=[]; for(let i=0;i<mCount;i++) spyNames.push(shuffled[i].name);
+    let discussionOrder=createRandomDiscussionOrder(players,mode,spyNames);
+    for(let p of players){ let isSpy=spyNames.includes(p.name); p.word=isSpy?(mode==='katil'?"???":pair[1]):pair[0]; if(p.name===myName) myAssignedWord=p.word; }
+    currentGame={mode,spyNames,pair,playersSnapshot:JSON.parse(JSON.stringify(players)),votes:{},playerVotes:{},currentRound:1,totalRounds,discussionOrder};
+    leaderConfirmed=false;
+    document.getElementById('screen-lobby').classList.add('hidden');
+    document.getElementById('screen-reveal').classList.remove('hidden');
+    document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
+    document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.remove('hidden');
+    document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.add('hidden');
+    broadcast({type:'start_game',gameData:{mode,pair,spyNames,discussionOrder,playersList:players.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds}});
+}
+
+function startGameFromHost(gameData){
+    for(let p of gameData.playersList) if(p.name===myName) myAssignedWord=p.word;
+    currentGame={mode:gameData.mode,spyNames:gameData.spyNames,pair:gameData.pair,playersSnapshot:gameData.playersList,votes:{},playerVotes:{},currentRound:1,totalRounds:gameData.totalRounds,discussionOrder:gameData.discussionOrder};
+    document.getElementById('screen-lobby').classList.add('hidden');
+    document.getElementById('screen-reveal').classList.remove('hidden');
+    document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
+    document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.add('hidden');
+    document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.remove('hidden');
+    leaderConfirmed=false;
+}
+
+function revealMyWord(){
+    let d=document.getElementById('my-reveal-word');
+    if(d.classList.contains('hidden')){ d.innerText=myAssignedWord; d.classList.remove('hidden'); document.getElementById('revealBtn').innerText="🔒 GİZLE"; }
+    else{ d.classList.add('hidden'); document.getElementById('revealBtn').innerText="👁️ GÖR"; if(isHost){ leaderConfirmed=true; document.getElementById('revealBtn').classList.add('hidden'); document.getElementById('changeBtn').classList.add('hidden'); document.getElementById('approveBtn').classList.remove('hidden'); document.getElementById('waiting-message').classList.add('hidden'); } }
+}
+
+function changeWord(){
+    if(isHost && !leaderConfirmed){
+        let newPair=fullHavuz[Math.floor(Math.random()*fullHavuz.length)];
+        currentGame.pair=newPair;
+        for(let p of currentGame.playersSnapshot){ let isSpy=currentGame.spyNames.includes(p.name); p.word=isSpy?(currentGame.mode==='katil'?"???":newPair[1]):newPair[0]; if(p.name===myName) myAssignedWord=p.word; let orig=players.find(pp=>pp.name===p.name); if(orig) orig.word=p.word; }
+        document.getElementById('my-reveal-word').innerText=myAssignedWord; document.getElementById('my-reveal-word').classList.add('hidden'); document.getElementById('revealBtn').innerText="👁️ GÖR";
+        broadcast({type:'start_game',gameData:{mode:currentGame.mode,pair:newPair,spyNames:currentGame.spyNames,discussionOrder:currentGame.discussionOrder,playersList:currentGame.playersSnapshot.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds:currentGame.totalRounds}});
+    }
+}
+
+function approveAndStartGame(){ if(isHost && leaderConfirmed){ broadcast({type:'game_started'}); finishRevealAndStartGame(); } }
+
+function finishRevealAndStartGame(){
+    document.getElementById('screen-reveal').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('wordCounter').innerHTML=`📖 ${currentGame.currentRound}/${currentGame.totalRounds}`;
+    document.getElementById('game-word-box').innerText=myAssignedWord;
+    document.getElementById('game-word-box').classList.remove('hidden');
+    if(isHost) document.getElementById('host-action').classList.remove('hidden');
+    document.getElementById('discussion-area').classList.add('hidden');
+    document.getElementById('vote-phase-btn-area').classList.add('hidden');
+    // Oyun başladığında tüm uzak sesleri kapat, kendi mikrofonumu kapat
+    toggleLocalMic(false);
+    for(let name in remoteStreams) remoteStreams[name].muted = true;
+}
+
+function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
+
+// TARTIŞMA (Lider merkezli timer + sıra, mikrofon otomatik)
+function startDiscussion(){
+    if(discussionActive) return;
+    discussionActive = true;
+    currentSpeakerIdx = 0;
+    currentTime = 30;
+    currentSpeakerName = currentGame.discussionOrder[0];
+    broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
+    broadcast({ type: 'timer_update', time: currentTime });
+    broadcast({ type: 'set_speaker_mic', speakerName: currentSpeakerName });
+    document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
+    document.getElementById('discussion-area').classList.remove('hidden');
+    document.getElementById('timer-display').innerText = currentTime;
+    document.getElementById('host-action').classList.add('hidden');
+    // Lider kendi mikrofonunu ayarla
+    if(currentSpeakerName === myName) toggleLocalMic(true);
+    else toggleLocalMic(false);
+    // Lider olarak diğerlerinin sesini ayarla
+    for(let name in remoteStreams) remoteStreams[name].muted = (name !== currentSpeakerName);
+    if(leaderTimer) clearInterval(leaderTimer);
+    leaderTimer = setInterval(() => {
+        if(!discussionActive){ clearInterval(leaderTimer); return; }
+        currentTime--;
+        document.getElementById('timer-display').innerText = currentTime;
+        broadcast({ type: 'timer_update', time: currentTime });
+        if(currentTime <= 0){
+            clearInterval(leaderTimer);
+            requestNextSpeaker();
+        }
+    }, 1000);
+}
+
+function requestNextSpeaker(){
+    if(!discussionActive) return;
+    if(currentSpeakerName !== myName){
+        alert("Sadece konuşan oyuncu sözü devredebilir!");
+        return;
+    }
+    if(isHost) nextSpeaker();
+    else {
+        let c = Object.values(connections)[0];
+        if(c) c.send({ type: 'request_next_speaker', speakerName: myName });
+    }
+}
+
+function nextSpeaker(){
+    if(!isHost || !discussionActive) return;
+    clearInterval(leaderTimer);
+    currentSpeakerIdx++;
+    if(currentSpeakerIdx < currentGame.discussionOrder.length){
+        currentSpeakerName = currentGame.discussionOrder[currentSpeakerIdx];
         currentTime = 30;
-        currentSpeakerName = currentGame.discussionOrder[0];
-        // Herkese yeni konuşmacıyı ve ilk timer değerini bildir
         broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
         broadcast({ type: 'timer_update', time: currentTime });
-        // Lider kendi ekranını güncelle
+        broadcast({ type: 'set_speaker_mic', speakerName: currentSpeakerName });
         document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
-        document.getElementById('discussion-area').classList.remove('hidden');
         document.getElementById('timer-display').innerText = currentTime;
-        document.getElementById('host-action').classList.add('hidden');
-        // Liderin söz devret butonunu göster
-        document.getElementById('leader-next-speaker-area').classList.remove('hidden');
-        // Timer'ı başlat (sadece lider, her saniye broadcast eder)
-        if(leaderTimer) clearInterval(leaderTimer);
+        // Lider mikrofonunu güncelle
+        if(currentSpeakerName === myName) toggleLocalMic(true);
+        else toggleLocalMic(false);
+        for(let name in remoteStreams) remoteStreams[name].muted = (name !== currentSpeakerName);
         leaderTimer = setInterval(() => {
             if(!discussionActive){ clearInterval(leaderTimer); return; }
             currentTime--;
-            // Lider kendi ekranını günceller
             document.getElementById('timer-display').innerText = currentTime;
-            // Herkese timer güncellemesi gönder
             broadcast({ type: 'timer_update', time: currentTime });
             if(currentTime <= 0){
                 clearInterval(leaderTimer);
                 nextSpeaker();
             }
         }, 1000);
+    } else {
+        discussionActive = false;
+        document.getElementById('discussion-area').classList.add('hidden');
+        document.getElementById('vote-phase-btn-area').classList.remove('hidden');
+        broadcast({ type: 'force_vote' });
+        if(leaderTimer) clearInterval(leaderTimer);
+        // Tartışma bitince tüm mikrofonları kapat
+        toggleLocalMic(false);
+        for(let name in remoteStreams) remoteStreams[name].muted = true;
     }
-    
-    function nextSpeaker(){
-        if(!isHost || !discussionActive) return;
-        clearInterval(leaderTimer);
-        currentSpeakerIdx++;
-        if(currentSpeakerIdx < currentGame.discussionOrder.length){
-            currentSpeakerName = currentGame.discussionOrder[currentSpeakerIdx];
-            currentTime = 30;
-            broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
-            broadcast({ type: 'timer_update', time: currentTime });
-            // Lider ekranını güncelle
-            document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
-            document.getElementById('timer-display').innerText = currentTime;
-            // Timer'ı yeniden başlat
-            leaderTimer = setInterval(() => {
-                if(!discussionActive){ clearInterval(leaderTimer); return; }
-                currentTime--;
-                document.getElementById('timer-display').innerText = currentTime;
-                broadcast({ type: 'timer_update', time: currentTime });
-                if(currentTime <= 0){
-                    clearInterval(leaderTimer);
-                    nextSpeaker();
-                }
-            }, 1000);
-        } else {
-            discussionActive = false;
-            document.getElementById('discussion-area').classList.add('hidden');
-            document.getElementById('vote-phase-btn-area').classList.remove('hidden');
-            document.getElementById('leader-next-speaker-area').classList.add('hidden');
-            broadcast({ type: 'force_vote' });
-            if(leaderTimer) clearInterval(leaderTimer);
-        }
-    }
-    
-    // ---------- OYLAMA VE SONUÇ ----------
-    function goToVotePhase(){ if(isHost) broadcast({type:'vote_start'}); startVotingPhase(); }
-    function startVotingPhase(){
-        document.getElementById('screen-game').classList.add('hidden');
-        document.getElementById('screen-vote').classList.remove('hidden');
-        currentGame.votes={}; currentGame.playerVotes={};
-        voteStarted=true; hasVoted=false;
-        renderVoteUI();
-        if(isHost){ setTimeout(()=>{ if(voteStarted){ let alive=currentGame.playersSnapshot.filter(p=>p.alive); let voted=Object.keys(currentGame.playerVotes).length; if(voted<alive.length){ for(let p of alive) if(!currentGame.playerVotes[p.name]) currentGame.playerVotes[p.name]='PAS'; } calculateResults(); } },12000); }
-    }
-    function renderVoteUI(){
-        if(!voteStarted) return;
-        let alive=currentGame.playersSnapshot.filter(p=>p.alive), voted=Object.keys(currentGame.playerVotes).length;
-        document.getElementById('vote-status').innerHTML=`✅ Oy verenler: ${voted}/${alive.length}`;
-        if(!hasVoted){
-            let candidates=alive.filter(p=>p.name!==myName);
-            document.getElementById('vote-options').innerHTML=candidates.map(p=>`<div class="vote-item" onclick="submitVote('${p.name}')">🔸 ${p.name}</div>`).join('');
-            if(voteTimer) clearInterval(voteTimer);
-            let tl=12, td=document.getElementById('vote-timer'); td.innerText=tl;
-            voteTimer=setInterval(()=>{ if(!hasVoted&&voteStarted){ tl--; td.innerText=tl; if(tl<=0){ clearInterval(voteTimer); submitVote('PAS'); } } },1000);
-        } else { document.getElementById('vote-options').innerHTML=`<div>✅ Oy kullandınız. Bekleyin...</div>`; if(voteTimer) clearInterval(voteTimer); document.getElementById('vote-timer').innerText="---"; }
-    }
-    function submitVote(target){
-        if(hasVoted||!voteStarted) return;
+}
+
+// OYLAMA VE SONUÇ (aynı önceki gibi)
+function goToVotePhase(){ if(isHost) broadcast({type:'vote_start'}); startVotingPhase(); }
+function startVotingPhase(){
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-vote').classList.remove('hidden');
+    currentGame.votes={}; currentGame.playerVotes={};
+    voteStarted=true; hasVoted=false;
+    renderVoteUI();
+    if(isHost){ setTimeout(()=>{ if(voteStarted){ let alive=currentGame.playersSnapshot.filter(p=>p.alive); let voted=Object.keys(currentGame.playerVotes).length; if(voted<alive.length){ for(let p of alive) if(!currentGame.playerVotes[p.name]) currentGame.playerVotes[p.name]='PAS'; } calculateResults(); } },12000); }
+}
+function renderVoteUI(){
+    if(!voteStarted) return;
+    let alive=currentGame.playersSnapshot.filter(p=>p.alive), voted=Object.keys(currentGame.playerVotes).length;
+    document.getElementById('vote-status').innerHTML=`✅ Oy verenler: ${voted}/${alive.length}`;
+    if(!hasVoted){
+        let candidates=alive.filter(p=>p.name!==myName);
+        document.getElementById('vote-options').innerHTML=candidates.map(p=>`<div class="vote-item" onclick="submitVote('${p.name}')">🔸 ${p.name}</div>`).join('');
         if(voteTimer) clearInterval(voteTimer);
-        hasVoted=true;
-        if(isHost){
-            if(target==='PAS') currentGame.playerVotes[myName]='PAS';
-            else { currentGame.votes[target]=(currentGame.votes[target]||0)+1; currentGame.playerVotes[myName]=target; }
-            renderVoteUI();
-            let alive=currentGame.playersSnapshot.filter(p=>p.alive);
-            if(Object.keys(currentGame.playerVotes).length>=alive.length) calculateResults();
-        } else { let c=Object.values(connections)[0]; if(c) c.send({type:'vote_submit',voter:myName,target}); document.getElementById('vote-options').innerHTML=`<div>✅ Oy verildi: ${target==='PAS'?'PAS':target}</div>`; }
-    }
-    function handleVoteSubmission(voter,target){
-        if(!isHost) return;
-        if(currentGame.playerVotes[voter]) return;
-        if(target==='PAS') currentGame.playerVotes[voter]='PAS';
-        else { currentGame.votes[target]=(currentGame.votes[target]||0)+1; currentGame.playerVotes[voter]=target; }
+        let tl=12, td=document.getElementById('vote-timer'); td.innerText=tl;
+        voteTimer=setInterval(()=>{ if(!hasVoted&&voteStarted){ tl--; td.innerText=tl; if(tl<=0){ clearInterval(voteTimer); submitVote('PAS'); } } },1000);
+    } else { document.getElementById('vote-options').innerHTML=`<div>✅ Oy kullandınız. Bekleyin...</div>`; if(voteTimer) clearInterval(voteTimer); document.getElementById('vote-timer').innerText="---"; }
+}
+function submitVote(target){
+    if(hasVoted||!voteStarted) return;
+    if(voteTimer) clearInterval(voteTimer);
+    hasVoted=true;
+    if(isHost){
+        if(target==='PAS') currentGame.playerVotes[myName]='PAS';
+        else { currentGame.votes[target]=(currentGame.votes[target]||0)+1; currentGame.playerVotes[myName]=target; }
         renderVoteUI();
         let alive=currentGame.playersSnapshot.filter(p=>p.alive);
         if(Object.keys(currentGame.playerVotes).length>=alive.length) calculateResults();
-    }
-    function calculateResults(){
-        if(!isHost) return;
-        voteStarted=false; if(voteTimer) clearInterval(voteTimer);
-        let alive=currentGame.playersSnapshot.filter(p=>p.alive), voteMap={};
-        for(let p of alive){ let v=currentGame.playerVotes[p.name]; if(v&&v!=='PAS') voteMap[v]=(voteMap[v]||0)+1; }
-        let sorted=Object.entries(voteMap).sort((a,b)=>b[1]-a[1]);
-        let isDraw=sorted.length>1&&sorted[0][1]===sorted[1][1];
-        let resultText="", resultTitle="";
-        if(sorted.length===0||isDraw){
-            resultTitle="🕵️ BERABERLİK! KÖSTEBEK KAZANDI!";
-            currentGame.spyNames.forEach(spy=>{ let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===spy); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1; let oidx=players.findIndex(pp=>pp.name===spy); if(oidx!==-1) players[oidx].score+=1; });
-            resultText="Oylama berabere. Köstebekler +1 puan.";
-        } else {
-            let target=sorted[0][0], targetPlayer=currentGame.playersSnapshot.find(p=>p.name===target);
-            let isSpy=currentGame.spyNames.includes(target);
-            if(isSpy){
-                resultTitle="🎯 DOĞRU TAHMİN!"; targetPlayer.alive=false;
-                let bilenler=[];
-                for(let p of currentGame.playersSnapshot){
-                    if(p.alive&&!currentGame.spyNames.includes(p.name)&&currentGame.playerVotes[p.name]===target){
-                        let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===p.name); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1;
-                        let oidx=players.findIndex(pp=>pp.name===p.name); if(oidx!==-1) players[oidx].score+=1;
-                        bilenler.push(p.name);
-                    }
+    } else { let c=Object.values(connections)[0]; if(c) c.send({type:'vote_submit',voter:myName,target}); document.getElementById('vote-options').innerHTML=`<div>✅ Oy verildi: ${target==='PAS'?'PAS':target}</div>`; }
+}
+function handleVoteSubmission(voter,target){
+    if(!isHost) return;
+    if(currentGame.playerVotes[voter]) return;
+    if(target==='PAS') currentGame.playerVotes[voter]='PAS';
+    else { currentGame.votes[target]=(currentGame.votes[target]||0)+1; currentGame.playerVotes[voter]=target; }
+    renderVoteUI();
+    let alive=currentGame.playersSnapshot.filter(p=>p.alive);
+    if(Object.keys(currentGame.playerVotes).length>=alive.length) calculateResults();
+}
+function calculateResults(){
+    if(!isHost) return;
+    voteStarted=false; if(voteTimer) clearInterval(voteTimer);
+    let alive=currentGame.playersSnapshot.filter(p=>p.alive), voteMap={};
+    for(let p of alive){ let v=currentGame.playerVotes[p.name]; if(v&&v!=='PAS') voteMap[v]=(voteMap[v]||0)+1; }
+    let sorted=Object.entries(voteMap).sort((a,b)=>b[1]-a[1]);
+    let isDraw=sorted.length>1&&sorted[0][1]===sorted[1][1];
+    let resultText="", resultTitle="";
+    if(sorted.length===0||isDraw){
+        resultTitle="🕵️ BERABERLİK! KÖSTEBEK KAZANDI!";
+        currentGame.spyNames.forEach(spy=>{ let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===spy); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1; let oidx=players.findIndex(pp=>pp.name===spy); if(oidx!==-1) players[oidx].score+=1; });
+        resultText="Oylama berabere. Köstebekler +1 puan.";
+    } else {
+        let target=sorted[0][0], targetPlayer=currentGame.playersSnapshot.find(p=>p.name===target);
+        let isSpy=currentGame.spyNames.includes(target);
+        if(isSpy){
+            resultTitle="🎯 DOĞRU TAHMİN!"; targetPlayer.alive=false;
+            let bilenler=[];
+            for(let p of currentGame.playersSnapshot){
+                if(p.alive&&!currentGame.spyNames.includes(p.name)&&currentGame.playerVotes[p.name]===target){
+                    let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===p.name); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1;
+                    let oidx=players.findIndex(pp=>pp.name===p.name); if(oidx!==-1) players[oidx].score+=1;
+                    bilenler.push(p.name);
                 }
-                resultText=`<b>${target}</b> köstebekti! ✅ Bilenler: ${bilenler.length?bilenler.join(', '):'Kimse bilemedi'}`;
-            } else {
-                resultTitle="❌ YANLIŞ KİŞİ!"; targetPlayer.alive=false;
-                currentGame.spyNames.forEach(spy=>{ let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===spy); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1; let oidx=players.findIndex(pp=>pp.name===spy); if(oidx!==-1) players[oidx].score+=1; });
-                resultText=`<b>${target}</b> masumdu. Köstebekler +1 puan.`;
             }
+            resultText=`<b>${target}</b> köstebekti! ✅ Bilenler: ${bilenler.length?bilenler.join(', '):'Kimse bilemedi'}`;
+        } else {
+            resultTitle="❌ YANLIŞ KİŞİ!"; targetPlayer.alive=false;
+            currentGame.spyNames.forEach(spy=>{ let idx=currentGame.playersSnapshot.findIndex(pp=>pp.name===spy); if(idx!==-1) currentGame.playersSnapshot[idx].score+=1; let oidx=players.findIndex(pp=>pp.name===spy); if(oidx!==-1) players[oidx].score+=1; });
+            resultText=`<b>${target}</b> masumdu. Köstebekler +1 puan.`;
         }
-        let gameEnded=(currentGame.currentRound>=currentGame.totalRounds);
-        let resultData={title:resultTitle,body:resultText,gameEnded,currentRound:currentGame.currentRound,totalRounds:currentGame.totalRounds};
-        broadcast({type:'result_sync',resultData}); showResultScreen(resultData);
     }
-    function showResultScreen(data){
-        document.getElementById('screen-vote').classList.add('hidden');
-        document.getElementById('screen-result').classList.remove('hidden');
-        document.getElementById('result-title').innerText=data.title;
-        let nextInfo=data.gameEnded?"🏆 TÜM TURLAR TAMAMLANDI! 🏆":`📌 Kelime ${data.currentRound}/${data.totalRounds} tamamlandı.`;
-        document.getElementById('result-body').innerHTML=`<div>${data.body}</div><div>${nextInfo}</div>`;
-        let sorted=[...players].sort((a,b)=>b.score-a.score);
-        let sh="<div>🏆 GÜNCEL PUAN DURUMU 🏆</div>";
-        sorted.forEach((p,idx)=>{ let medal=idx===0?"🥇":idx===1?"🥈":idx===2?"🥉":"📌"; sh+=`<div>${medal} ${p.name} — 🎯 ${p.score}</div>`; });
-        document.getElementById('result-scoreboard').innerHTML=sh;
-        if(data.gameEnded) document.getElementById('next-round-btn-area').classList.add('hidden');
-        else { if(isHost) document.getElementById('next-round-btn-area').classList.remove('hidden'); else { document.getElementById('next-round-btn-area').classList.add('hidden'); document.getElementById('result-body').innerHTML+=`<div>⏳ Lider sonraki kelimeye geçecek...</div>`; } }
-        voteStarted=false;
-    }
-    function nextRound(){
-        if(!isHost) return;
-        if(currentGame.currentRound<currentGame.totalRounds){ currentGame.currentRound++; broadcast({type:'next_round'}); goToNextRound(); }
-        else showFinalGameResults();
-    }
-    function goToNextRound(){ startNewRound(); }
-    function startNewRound(){
-        let pairIndex=Math.floor(Math.random()*fullHavuz.length), pair=fullHavuz[pairIndex];
-        let mCount=players.length>=7?2:1, shuffled=[...players];
-        for(let i=shuffled.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
-        let spyNames=[]; for(let i=0;i<mCount;i++) spyNames.push(shuffled[i].name);
-        let discussionOrder=createRandomDiscussionOrder(players,currentGame.mode,spyNames);
-        for(let p of players){ let isSpy=spyNames.includes(p.name); p.word=isSpy?(currentGame.mode==='katil'?"???":pair[1]):pair[0]; if(p.name===myName) myAssignedWord=p.word; }
-        let gameData={mode:currentGame.mode,pair,spyNames,discussionOrder,playersList:players.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds:currentGame.totalRounds};
-        document.getElementById('screen-result').classList.add('hidden');
-        document.getElementById('screen-reveal').classList.remove('hidden');
-        document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
-        document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.remove('hidden');
-        document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.add('hidden');
-        currentGame={mode:currentGame.mode,spyNames,pair,playersSnapshot:JSON.parse(JSON.stringify(players)),votes:{},playerVotes:{},currentRound:currentGame.currentRound,totalRounds:currentGame.totalRounds,discussionOrder};
-        leaderConfirmed=false;
-        broadcast({type:'start_game',gameData});
-    }
-    function showFinalGameResults(){
-        let sorted=[...players].sort((a,b)=>b.score-a.score);
-        let html="<h3>🏆 FİNAL SIRALAMASI 🏆</h3>";
-        sorted.forEach((p,idx)=>{ let medal=idx===0?"🥇":idx===1?"🥈":idx===2?"🥉":"📌"; html+=`<div>${medal} ${p.name} — 🎯 ${p.score} puan</div>`; });
-        document.getElementById('result-body').innerHTML=html;
-        document.getElementById('result-title').innerText="🎉 OYUN BİTTİ 🎉";
-        document.getElementById('next-round-btn-area').classList.add('hidden');
-        document.getElementById('result-scoreboard').innerHTML="";
-        let btn=document.createElement('button'); btn.innerText="🏠 LOBİYE DÖN"; btn.className="btn btn-main"; btn.onclick=()=>resetToLobby(); document.getElementById('result-body').appendChild(btn);
-    }
-    function resetToLobby(){
-        if(leaderTimer) clearInterval(leaderTimer);
-        discussionActive = false;
-        document.getElementById('screen-game').classList.add('hidden');
-        document.getElementById('screen-vote').classList.add('hidden');
-        document.getElementById('screen-result').classList.add('hidden');
-        document.getElementById('screen-reveal').classList.add('hidden');
-        document.getElementById('screen-lobby').classList.remove('hidden');
-        renderLobby();
-        broadcast({type:'sync',players:players.map(p=>({name:p.name,score:p.score,alive:true}))});
-        broadcast({type:'reset_to_lobby'});
-        voteStarted=false; hasVoted=false;
-        if(voteTimer) clearInterval(voteTimer);
-    }
+    let gameEnded=(currentGame.currentRound>=currentGame.totalRounds);
+    let resultData={title:resultTitle,body:resultText,gameEnded,currentRound:currentGame.currentRound,totalRounds:currentGame.totalRounds};
+    broadcast({type:'result_sync',resultData}); showResultScreen(resultData);
+}
+function showResultScreen(data){
+    document.getElementById('screen-vote').classList.add('hidden');
+    document.getElementById('screen-result').classList.remove('hidden');
+    document.getElementById('result-title').innerText=data.title;
+    let nextInfo=data.gameEnded?"🏆 TÜM TURLAR TAMAMLANDI! 🏆":`📌 Kelime ${data.currentRound}/${data.totalRounds} tamamlandı.`;
+    document.getElementById('result-body').innerHTML=`<div>${data.body}</div><div>${nextInfo}</div>`;
+    let sorted=[...players].sort((a,b)=>b.score-a.score);
+    let sh="<div>🏆 GÜNCEL PUAN DURUMU 🏆</div>";
+    sorted.forEach((p,idx)=>{ let medal=idx===0?"🥇":idx===1?"🥈":idx===2?"🥉":"📌"; sh+=`<div>${medal} ${p.name} — 🎯 ${p.score}</div>`; });
+    document.getElementById('result-scoreboard').innerHTML=sh;
+    if(data.gameEnded) document.getElementById('next-round-btn-area').classList.add('hidden');
+    else { if(isHost) document.getElementById('next-round-btn-area').classList.remove('hidden'); else { document.getElementById('next-round-btn-area').classList.add('hidden'); document.getElementById('result-body').innerHTML+=`<div>⏳ Lider sonraki kelimeye geçecek...</div>`; } }
+    voteStarted=false;
+}
+function nextRound(){
+    if(!isHost) return;
+    if(currentGame.currentRound<currentGame.totalRounds){ currentGame.currentRound++; broadcast({type:'next_round'}); goToNextRound(); }
+    else showFinalGameResults();
+}
+function goToNextRound(){ startNewRound(); }
+function startNewRound(){
+    let pairIndex=Math.floor(Math.random()*fullHavuz.length), pair=fullHavuz[pairIndex];
+    let mCount=players.length>=7?2:1, shuffled=[...players];
+    for(let i=shuffled.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
+    let spyNames=[]; for(let i=0;i<mCount;i++) spyNames.push(shuffled[i].name);
+    let discussionOrder=createRandomDiscussionOrder(players,currentGame.mode,spyNames);
+    for(let p of players){ let isSpy=spyNames.includes(p.name); p.word=isSpy?(currentGame.mode==='katil'?"???":pair[1]):pair[0]; if(p.name===myName) myAssignedWord=p.word; }
+    let gameData={mode:currentGame.mode,pair,spyNames,discussionOrder,playersList:players.map(p=>({name:p.name,score:p.score,alive:true,word:p.word})),totalRounds:currentGame.totalRounds};
+    document.getElementById('screen-result').classList.add('hidden');
+    document.getElementById('screen-reveal').classList.remove('hidden');
+    document.getElementById('my-reveal-word').innerText="???"; document.getElementById('my-reveal-word').classList.add('hidden');
+    document.getElementById('revealBtn').classList.remove('hidden'); document.getElementById('changeBtn').classList.remove('hidden');
+    document.getElementById('approveBtn').classList.add('hidden'); document.getElementById('waiting-message').classList.add('hidden');
+    currentGame={mode:currentGame.mode,spyNames,pair,playersSnapshot:JSON.parse(JSON.stringify(players)),votes:{},playerVotes:{},currentRound:currentGame.currentRound,totalRounds:currentGame.totalRounds,discussionOrder};
+    leaderConfirmed=false;
+    broadcast({type:'start_game',gameData});
+}
+function showFinalGameResults(){
+    let sorted=[...players].sort((a,b)=>b.score-a.score);
+    let html="<h3>🏆 FİNAL SIRALAMASI 🏆</h3>";
+    sorted.forEach((p,idx)=>{ let medal=idx===0?"🥇":idx===1?"🥈":idx===2?"🥉":"📌"; html+=`<div>${medal} ${p.name} — 🎯 ${p.score} puan</div>`; });
+    document.getElementById('result-body').innerHTML=html;
+    document.getElementById('result-title').innerText="🎉 OYUN BİTTİ 🎉";
+    document.getElementById('next-round-btn-area').classList.add('hidden');
+    document.getElementById('result-scoreboard').innerHTML="";
+    let btn=document.createElement('button'); btn.innerText="🏠 LOBİYE DÖN"; btn.className="btn btn-main"; btn.onclick=()=>resetToLobby(); document.getElementById('result-body').appendChild(btn);
+}
+function resetToLobby(){
+    if(leaderTimer) clearInterval(leaderTimer);
+    discussionActive = false;
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-vote').classList.add('hidden');
+    document.getElementById('screen-result').classList.add('hidden');
+    document.getElementById('screen-reveal').classList.add('hidden');
+    document.getElementById('screen-lobby').classList.remove('hidden');
+    renderLobby();
+    broadcast({type:'sync',players:players.map(p=>({name:p.name,score:p.score,alive:true}))});
+    broadcast({type:'reset_to_lobby'});
+    voteStarted=false; hasVoted=false;
+    if(voteTimer) clearInterval(voteTimer);
+    // Lobide tüm mikrofonları kapat (kullanıcı butonla açabilir)
+    toggleLocalMic(false);
+    for(let name in remoteStreams) remoteStreams[name].muted = true;
+}
 </script>
 </body>
-</html>  
+</html>
