@@ -3,19 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V20 | SADECE YAZILI SOHBET</title>
+    <title>GAFİL KÖSTEBEK | V21 | KURALLI</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { background-color: #000; color: #fff; font-family: -apple-system, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { width: 95%; max-width: 460px; background: #111; border: 2px solid #222; border-radius: 35px; padding: 20px 16px; text-align: center; }
-        .chat-container { background: #0a0a0a; border-radius: 20px; margin-top: 15px; padding: 8px; border: 1px solid #333; }
-        .chat-messages { height: 150px; overflow-y: auto; font-size: 0.7em; text-align: left; padding: 5px; background: #111; border-radius: 12px; margin-bottom: 5px; }
-        .chat-message { padding: 3px 5px; border-bottom: 1px solid #222; word-wrap: break-word; }
-        .chat-sender { color: #ffd700; font-weight: bold; }
-        .chat-input-area { display: flex; gap: 6px; }
-        .chat-input { flex: 1; background: #1a1a1a; border: none; color: white; padding: 8px; border-radius: 20px; font-size: 0.7em; }
-        .chat-send { background: #ffd700; color: black; border: none; border-radius: 20px; padding: 8px 12px; font-size: 0.7em; cursor: pointer; }
         .btn { width: 100%; padding: 14px; margin: 8px 0; border-radius: 28px; border: none; font-weight: bold; cursor: pointer; }
         .btn-main { background: #fff; color: #000; }
         .btn-gafil { background: #ffd700; color: #000; }
@@ -26,7 +19,7 @@
         .word-box { background: #0f0f0f; border: 3px dashed #555; padding: 40px 10px; font-size: 2.2em; margin: 20px 0; border-radius: 28px; color: #ffd700; }
         .vote-item { background: #1a1a1a; padding: 14px; margin: 8px 0; border-radius: 50px; border: 1px solid #333; cursor: pointer; }
         .hidden { display: none !important; }
-        #vote-timer { font-size: 2.5em; color: #ff4d4d; margin: 10px auto; background: #1a0000; border-radius: 60px; width: 100px; padding: 10px; }
+        #vote-timer, #timer-display { font-size: 2.5em; color: #ff4d4d; margin: 10px auto; background: #1a0000; border-radius: 60px; width: 100px; padding: 10px; }
         .reveal-word-box { background: #0f0f0f; border: 2px solid #ffd700; padding: 20px; font-size: 1.8em; margin: 15px 0; border-radius: 20px; }
         .rank-0 { border-left: 4px solid #ffd700; }
         .rank-1 { border-left: 4px solid #c0c0c0; }
@@ -34,23 +27,26 @@
         .copy-area { display: flex; gap: 8px; background: #0a0a0a; padding: 5px 10px; border-radius: 40px; margin-bottom: 10px; }
         .copy-area input { flex: 1; background: transparent; border: none; color: #ffd700; font-size: 0.6em; padding: 8px 0; margin: 0; text-align: left; }
         .copy-btn { background: #ffd700; color: #000; border: none; border-radius: 30px; padding: 6px 12px; cursor: pointer; }
+        .rule-box { background: #1a1a1a; border-radius: 20px; padding: 10px; margin: 15px 0 5px; font-size: 0.7em; text-align: left; color: #ccc; border: 1px solid #333; }
+        .rule-box p { margin: 5px 0; }
+        .rule-icon { font-size: 1.2em; margin-right: 6px; }
+        .speaker-indicator { background: #2e7d32; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7em; display: inline-block; margin-left: 8px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div id="chat-container" class="chat-container hidden">
-        <div id="chat-messages" class="chat-messages"></div>
-        <div class="chat-input-area">
-            <input type="text" id="chat-input" class="chat-input" placeholder="Sohbet mesajı..." maxlength="100">
-            <button class="chat-send" onclick="sendChatMessage()">GÖNDER</button>
-        </div>
-    </div>
-
+    <!-- LOBİ EKRANI -->
     <div id="screen-lobby">
-        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[V20]</span></h1>
+        <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[V21]</span></h1>
         <div id="setup-area">
             <input type="text" id="nameInput" placeholder="Oyuncu Adı" maxlength="14">
             <button class="btn btn-main" onclick="odaKur()">🎤 ODA KUR (LİDER OL)</button>
+            <div class="rule-box">
+                <p><span class="rule-icon">🗣️</span> <strong>İsmi yazan kişi konuşur, sonra sözü devreder.</strong></p>
+                <p><span class="rule-icon">👥</span> 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
+                <p><span class="rule-icon">🎯</span> Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
+                <p><span class="rule-icon">🚫</span> 3 pasta eleme yok &nbsp;|&nbsp; ⚖️ Beraberlikte köstebek kazanır</p>
+            </div>
         </div>
         <div id="lobby-area" class="hidden">
             <div class="copy-area">
@@ -71,6 +67,7 @@
         </div>
     </div>
 
+    <!-- KELİME GÖSTERME (LİDER ONAY) -->
     <div id="screen-reveal" class="hidden">
         <h2>SENİN KELİMEN</h2>
         <div id="my-reveal-word" class="reveal-word-box">???</div>
@@ -80,6 +77,7 @@
         <button id="approveBtn" class="btn btn-gafil hidden" onclick="approveAndStartGame()">✅ OYUNU BAŞLAT</button>
     </div>
 
+    <!-- OYUN EKRANI (TARTIŞMA) -->
     <div id="screen-game" class="hidden">
         <div class="word-counter" id="wordCounter">📖 1/5</div>
         <div class="word-box" id="game-word-box">---</div>
@@ -87,14 +85,14 @@
         <div id="host-action" class="hidden"><button class="btn btn-gafil" onclick="startDiscussion()">🎙️ TARTIŞMAYI BAŞLAT</button></div>
         <div id="discussion-area" class="hidden">
             <div id="speaker-name">🎤 --- <span class="speaker-indicator">KONUŞUYOR</span></div>
-            <div id="timer-display">20</div>
+            <div id="timer-display">30</div>
             <button id="end-turn-btn" class="btn btn-main" onclick="requestNextSpeaker()">⏩ SÖZÜ DEVRET</button>
         </div>
         <div id="vote-phase-btn-area" class="hidden"><button class="btn btn-katil" onclick="goToVotePhase()">🗳️ OYLAMAYA GEÇ</button></div>
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
-        <div class="rule-note">💬 TARTIŞMA: Yazılı sohbeti kullanın.</div>
     </div>
 
+    <!-- OYLAMA -->
     <div id="screen-vote" class="hidden">
         <h3>🗳️ KİM KÖSTEBEK?</h3>
         <div id="vote-status"></div>
@@ -104,6 +102,7 @@
         <button class="btn btn-exit" onclick="exitToLobby()">ÇIK</button>
     </div>
 
+    <!-- SONUÇ -->
     <div id="screen-result" class="hidden">
         <h1 id="result-title">---</h1>
         <div id="result-body"></div>
@@ -113,33 +112,13 @@
     </div>
 </div>
 
-<script>// ----------------------------- PEERJS BAĞLANTILARI (SES YOK) -----------------------------
+<script>
+    // ----------------------------- PEERJS (SADECE DATA) -----------------------------
     let peer, myId, myName, isHost = false;
     let players = [];
     let connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
     let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, discTimer = null;
-
-    // Sohbet
-    function sendChatMessage() {
-        let input = document.getElementById('chat-input');
-        let msg = input.value.trim();
-        if(msg === "") return;
-        input.value = "";
-        let chatData = { type: 'chat', sender: myName, message: msg };
-        broadcast(chatData);
-        addChatMessage(myName, msg);
-    }
-    function addChatMessage(sender, message) {
-        let container = document.getElementById('chat-messages');
-        let div = document.createElement('div');
-        div.className = 'chat-message';
-        div.innerHTML = `<span class="chat-sender">${escapeHtml(sender)}:</span> ${escapeHtml(message)}`;
-        container.appendChild(div);
-        container.scrollTop = container.scrollHeight;
-        while(container.children.length > 50) container.removeChild(container.firstChild);
-    }
-    function escapeHtml(str) { return str.replace(/[&<>]/g, m => m==='&'?'&amp;': m==='<'?'&lt;':'&gt;'); }
 
     // Oda kur
     function odaKur() {
@@ -155,7 +134,6 @@
         document.getElementById('share-link').value = link;
         players = [{ name: myName, score: 0, word: "", alive: true }];
         renderLobby();
-        document.getElementById('chat-container').classList.remove('hidden');
     }
     function kopyalaLink() { let l=document.getElementById('share-link'); l.select(); navigator.clipboard.writeText(l.value); alert("Link kopyalandı!"); }
     function exitToLobby() { if(confirm("Oyundan çık?")) resetToLobby(); }
@@ -176,14 +154,14 @@
         else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
-        else if(d.type === 'request_next_speaker') { if(isHost && discussionActive) nextSpeaker(); }
+        else if(d.type === 'request_next_speaker') { 
+            if(isHost && discussionActive) nextSpeaker(); 
+        }
         else if(d.type === 'disc_start') { if(!isHost) runDiscussionClient(d.speakerName); }
         else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
-        else if(d.type === 'set_speaker') { if(!isHost && d.speakerName===myName) {} }
         else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
         else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
         else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
-        else if(d.type === 'chat') { addChatMessage(d.sender, d.message); }
     }
     function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
     function renderLobby() {
@@ -206,11 +184,11 @@
             conn.on('data', d => handleDataMessage(d, conn));
             document.getElementById('setup-area').classList.add('hidden');
             document.getElementById('lobby-area').classList.remove('hidden');
-            document.getElementById('chat-container').classList.remove('hidden');
         });
     }
     function removePlayer(name) { if(isHost && name!==myName) { players=players.filter(p=>p.name!==name); delete connections[name]; broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
-        // ----------------------------- OYUN MEKANİĞİ -----------------------------
+
+    // ----------------------------- OYUN MEKANİĞİ -----------------------------
     const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
     let fullHavuz = kelimeHavuzu;
 
@@ -277,11 +255,12 @@
         document.getElementById('vote-phase-btn-area').classList.add('hidden');
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
+    
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive=true; currentSpeakerIdx=0;
         let first=currentGame.discussionOrder[0];
-        broadcast({type:'set_speaker',speakerName:first}); broadcast({type:'disc_start',speakerName:first});
+        broadcast({type:'disc_start',speakerName:first});
         runDiscussion(first);
     }
     function runDiscussion(speaker){
@@ -290,22 +269,30 @@
         document.getElementById('host-action').classList.add('hidden');
         document.getElementById('discussion-area').classList.remove('hidden');
         document.getElementById('speaker-name').innerHTML="🎤 "+speaker+' <span class="speaker-indicator">KONUŞUYOR</span>';
+        // Mikrofon yok, sadece yazılı sohbet yok, ama buton kontrolü
         if(discTimer) clearInterval(discTimer);
-        let t=20, td=document.getElementById('timer-display'); td.innerText=t;
+        let t=30; // 30 saniye
+        let td=document.getElementById('timer-display'); td.innerText=t;
         discTimer=setInterval(()=>{ if(!discussionActive){clearInterval(discTimer);return;} t--; td.innerText=t; if(t<=0){ clearInterval(discTimer); if(speaker===myName) requestNextSpeaker(); } },1000);
     }
     function runDiscussionClient(speaker){ runDiscussion(speaker); }
+    
     function requestNextSpeaker(){
         if(!discussionActive) return;
+        // SADECE KONUŞAN KİŞİ DEVREDEBİLİR
+        if(currentSpeakerName !== myName) {
+            alert("Sadece konuşan oyuncu sözü devredebilir!");
+            return;
+        }
         if(isHost) nextSpeaker();
-        else { let c=Object.values(connections)[0]; if(c) c.send({type:'request_next_speaker'}); }
+        else { let c=Object.values(connections)[0]; if(c) c.send({ type: 'request_next_speaker' }); }
     }
     function nextSpeaker(){
         if(!isHost||!discussionActive) return;
         clearInterval(discTimer); currentSpeakerIdx++;
         if(currentSpeakerIdx<currentGame.discussionOrder.length){
             let next=currentGame.discussionOrder[currentSpeakerIdx];
-            broadcast({type:'set_speaker',speakerName:next}); broadcast({type:'disc_start',speakerName:next});
+            broadcast({type:'disc_start',speakerName:next});
             runDiscussion(next);
         } else {
             discussionActive=false;
@@ -314,6 +301,7 @@
             broadcast({type:'force_vote'});
         }
     }
+    
     function goToVotePhase(){ if(isHost) broadcast({type:'vote_start'}); startVotingPhase(); }
     function startVotingPhase(){
         document.getElementById('screen-game').classList.add('hidden');
