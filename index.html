@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V22 | LİDER SÖZ DEVRET</title>
+    <title>GAFİL KÖSTEBEK | V22 | SENKRON SÜRE</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -109,7 +109,7 @@
 </div>
 
 <script>
-        // ======================= PEERJS (iPhone secure) =======================
+      // ======================= PEERJS (iPhone secure) =======================
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -150,10 +150,13 @@
                 currentSpeakerName = d.speakerName;
                 document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
                 document.getElementById('discussion-area').classList.remove('hidden');
+                // Süre sıfırlanır, liderden gelecek timer_update ile güncellenecek
+                document.getElementById('timer-display').innerText = "30";
             }
         }
         else if(d.type === 'timer_update') {
-            if(!isHost && discussionActive) {
+            // Tüm oyuncular (lider dahil) timer'ı günceller - sadece ekran güncellemesi
+            if(document.getElementById('timer-display')) {
                 document.getElementById('timer-display').innerText = d.time;
             }
         }
@@ -253,14 +256,14 @@
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
     
-    // ---------- LİDER MERKEZLİ TARTIŞMA (Sadece lider söz devreder) ----------
+    // ---------- LİDER MERKEZLİ TARTIŞMA (Sadece lider söz devreder, timer senkron) ----------
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive = true;
         currentSpeakerIdx = 0;
         currentTime = 30;
         currentSpeakerName = currentGame.discussionOrder[0];
-        // Herkese yeni konuşmacıyı bildir
+        // Herkese yeni konuşmacıyı ve ilk timer değerini bildir
         broadcast({ type: 'disc_start', speakerName: currentSpeakerName });
         broadcast({ type: 'timer_update', time: currentTime });
         // Lider kendi ekranını güncelle
@@ -270,12 +273,14 @@
         document.getElementById('host-action').classList.add('hidden');
         // Liderin söz devret butonunu göster
         document.getElementById('leader-next-speaker-area').classList.remove('hidden');
-        // Timer'ı başlat (sadece lider)
+        // Timer'ı başlat (sadece lider, her saniye broadcast eder)
         if(leaderTimer) clearInterval(leaderTimer);
         leaderTimer = setInterval(() => {
             if(!discussionActive){ clearInterval(leaderTimer); return; }
             currentTime--;
+            // Lider kendi ekranını günceller
             document.getElementById('timer-display').innerText = currentTime;
+            // Herkese timer güncellemesi gönder
             broadcast({ type: 'timer_update', time: currentTime });
             if(currentTime <= 0){
                 clearInterval(leaderTimer);
@@ -459,4 +464,4 @@
     }
 </script>
 </body>
-</htm>
+</html>  
