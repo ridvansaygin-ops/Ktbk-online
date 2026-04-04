@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V23 | KARARLI</title>
+    <title>GAFİL KÖSTEBEK | V24 | HERKES GÖRÜR</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -114,7 +114,7 @@
 </div>
 
 <script>
-        // ----------------------------- PEERJS (SADECE DATA) -----------------------------
+
     let peer, myId, myName, isHost = false;
     let players = [], connections = {};
     let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
@@ -151,12 +151,30 @@
         else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
         else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
         else if(d.type === 'request_next_speaker') { if(isHost && discussionActive) nextSpeaker(); }
-        else if(d.type === 'disc_start') { if(!isHost) { currentSpeakerName = d.speakerName; document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>'; if(d.speakerName === myName) startMyTimer(); else stopMyTimer(); } }
+        else if(d.type === 'disc_start') { 
+            if(!isHost) {
+                currentSpeakerName = d.speakerName;
+                document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
+                document.getElementById('discussion-area').classList.remove('hidden');
+                if(d.speakerName === myName) {
+                    // timer'ı kendim başlatıyorum (liderden bağımsız)
+                    startMyTimer();
+                } else {
+                    stopMyTimer();
+                    // timer göstergeyi sıfırla ama pasif
+                    document.getElementById('timer-display').innerText = "30";
+                }
+            }
+        }
+        else if(d.type === 'timer_update') {
+            if(!isHost && discussionActive && currentSpeakerName !== myName) {
+                document.getElementById('timer-display').innerText = d.time;
+            }
+        }
         else if(d.type === 'force_vote') { if(!isHost) goToVotePhase(); }
         else if(d.type === 'game_started') { if(!isHost) finishRevealAndStartGame(); }
         else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
         else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
-        else if(d.type === 'stop_timer') { if(discTimer) clearInterval(discTimer); }
     }
     function refreshPlayers() { if(isHost) { broadcast({ type:'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive })) }); renderLobby(); } }
     function renderLobby() {
@@ -182,6 +200,7 @@
         });
     }
 
+    // ----------------------------- OYUN MEKANİĞİ -----------------------------
     const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Türk Kahvesi","Filtre Kahve"],["Lahmacun","Pide"],["Barış Manço","Cem Karaca"],["Netflix","YouTube"],["Çay","Kahve"],["Dondurma","Sorbe"]];
     let fullHavuz = kelimeHavuzu;
     function createRandomDiscussionOrder(playersList,mode,spyNames){
@@ -248,21 +267,20 @@
     }
     function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
     
-    // ---------- DÜZELTİLMİŞ TARTIŞMA VE SIRA YÖNETİMİ ----------
+    // ---------- DÜZELTİLMİŞ TARTIŞMA (HERKES GÖRÜR) ----------
     function startDiscussion(){
         if(discussionActive) return;
         discussionActive = true;
         currentSpeakerIdx = 0;
         let first = currentGame.discussionOrder[0];
         broadcast({ type: 'disc_start', speakerName: first });
-        // Lider kendisi için de ayarla
+        // Lider kendi ekranını ayarla
         currentSpeakerName = first;
         document.getElementById('speaker-name').innerHTML = "🎤 "+first+' <span class="speaker-indicator">KONUŞUYOR</span>';
+        document.getElementById('discussion-area').classList.remove('hidden');
         if(first === myName) startMyTimer();
         else stopMyTimer();
-        // Liderin butonlarını gizle
         document.getElementById('host-action').classList.add('hidden');
-        document.getElementById('discussion-area').classList.remove('hidden');
     }
     
     function startMyTimer(){
@@ -274,6 +292,10 @@
             if(!discussionActive){ clearInterval(discTimer); return; }
             t--;
             td.innerText = t;
+            // Her saniye timer'ı diğer oyunculara broadcast et
+            if(isHost && discussionActive) {
+                broadcast({ type: 'timer_update', time: t });
+            }
             if(t <= 0){
                 clearInterval(discTimer);
                 requestNextSpeaker();
@@ -307,7 +329,7 @@
         if(currentSpeakerIdx < currentGame.discussionOrder.length){
             let next = currentGame.discussionOrder[currentSpeakerIdx];
             broadcast({ type: 'disc_start', speakerName: next });
-            // Lider kendi ekranını da güncelle
+            // Lider kendi ekranını güncelle
             currentSpeakerName = next;
             document.getElementById('speaker-name').innerHTML = "🎤 "+next+' <span class="speaker-indicator">KONUŞUYOR</span>';
             if(next === myName) startMyTimer();
@@ -453,7 +475,7 @@
         document.getElementById('screen-game').classList.add('hidden');
         document.getElementById('screen-vote').classList.add('hidden');
         document.getElementById('screen-result').classList.add('hidden');
-        document.getElementById('screen-reveal').classList.add('hidden');
+        document.getElementById'screen-reveal').classList.add('hidden');
         document.getElementById('screen-lobby').classList.remove('hidden');
         renderLobby();
         broadcast({type:'sync',players:players.map(p=>({name:p.name,score:p.score,alive:true}))});
@@ -463,4 +485,4 @@
     }
 </script>
 </body>
-</html>/ 
+</html> 
