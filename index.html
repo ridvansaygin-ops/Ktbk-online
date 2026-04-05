@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | ONLINE SESLİ</title>
+    <title>GAFİL KÖSTEBEK | V34 | KARARLI B SEÇENEĞİ</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE SESLİ]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[KARARLI]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -51,9 +51,8 @@
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 PAS ile eleme yok, 3+ PAS oylama tekrarı</p>
-                <p>⚖️ Beraberlikte oylama tekrarı</p>
+                <p>⚖️ Beraberlikte oylama tekrarı | Köstebek ≥ Sivil ise KÖSTEBEK KAZANIR</p>
                 <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "📱 WHATSAPP MODU" ile tüm sesler kapatılır.</p>
-                <p>📌 Oyun SADECE kelime sayısı bittiğinde biter.</p>
             </div>
         </div>
         <div id="lobby-area" class="hidden">
@@ -111,8 +110,7 @@
 </div>
 
 <script>
-   // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
-    // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
+// 2. PARÇA (PeerJS + WhatsApp Modu)
 let peer, myId, myName, isHost = false;
 let players = [];
 let connections = {};
