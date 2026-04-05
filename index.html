@@ -353,27 +353,10 @@ if(joinId) {
         </div>
     `;
 }
-// ========== 3. PARÇA: DÜZELTİLMİŞ - OYUN SONU KONTROLÜ HER YERDE ==========
+// ========== 3. PARÇA: KESİN KURALLAR - DONMA YOK ==========
 const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök Kuşağı","Kuzey Işıkları"],["Yapay Zeka","İnsan Beyni"],["Haluk Bilginer","Şener Şen"],["Sırt Çantası","Pazar Arabası"],["Zeytinyağlı Sarma","Etli Dolma"],["Görüldü Atmak","Yazıyor"],["Tavuk Döner","Et Döner"],["Klima","Vantilatör"],["Adile Naşit","Münir Özkul"],["Uzay İstasyonu","Rasathane Gözlemi"],["Kıvanç Tatlıtuğ","Kenan İmirzalıoğlu"],["Robot El","Protez Bacak"],["Akıllı Süpürge","Dikey Süpürge"],["Müslüm Gürses","Orhan Gencebay"],["Adana Kebap","Urfa Kebap"],["Güneş Tutulması","Ay Tutulması"],["Cem Yılmaz","Şahan Gökbakar"],["Ezgi Mola","Merve Dizdar"],["Vesikalık Fotoğraf","Biyometrik Resim"],["Türk Kahvesi","Filtre Kahve"],["Tarkan Tevetoğlu","Murat Boz"],["Lionel Messi","Cristiano Ronaldo"],["Lahmacun","Kıymalı Pide"],["Barış Manço","Cem Karaca"],["Sessiz Sinema","Kulaktan Kulağa"],["Fatih Terim","Okan Buruk"],["Halı Saha","Basket Potası"],["Netflix","YouTube"],["Peynirli Börek","Ispanaklı Börek"],["Emniyet Kemeri","Hava Yastığı"],["Gülse Birsel","Ata Demirer"],["Düğün Salonu","Kına Gecesi"],["Serenay Sarıkaya","Hande Erçel"],["Beren Saat","Hazal Kaya"],["Acun Ilıcalı","Beyazıt Öztürk"],["Aras Bulut","Çağatay Ulusoy"],["Sokak Lambası","Trafik Işığı"],["Mauro Icardi","Victor Osimhen"],["Hadise Açıkgöz","Ece Seçkin"],["Maden Suyu","Limonlu Soda"],["Yol Ayrımı","Çıkmaz Sokak"],["Instagram Hikayesi","TikTok Videosu"],["Korku Evi","Kaçış Oyunları"],["Yılmaz Erdoğan","Demet Akbağ"],["Pep Guardiola","Jose Mourinho"],["Uçak Bileti","Otel Rezervasyonu"],["Beyaz Peynir","Kaşar Peyniri"],["Sıcak Çikolata","Sahlep Sütü"],["Mutfak Robotu","El Mikseri"],["Zeki Müren","Bülent Ersoy"],["Pirinç Pilavı","Bulgur Pilavı"],["Ajda Pekkan","Sezen Aksu"],["Samanyolu Galaksisi","Andromeda Galaksisi"],["Uçan Balon","Sıcak Zeplin"],["Engin Akyürek","Burak Özçivit"],["Kar Küresi","Kum Saati"],["Dizüstü Bilgisayar","Tablet Bilgisayar"],["Enis Arıkan","Doğu Demirkol"],["Maden Ocağı","Petrol Kuyusu"],["Hız Treni","Dönme Dolap"],["Demet Akalın","Serdar Ortaç"],["Kadir İnanır","Cüneyt Arkın"],["Gülşen Çolakoğlu","Hande Yener"],["Oğuzhan Koç","Edis Görgülü"],["Kulak İçi","Kulak Üstü"],["Kuşburnu Çayı","Ada Çayı"],["Açık Büfe","Alakart Menü"],["Süzme Bal","Petek Bal"],["İçli Köfte","Kadınbudu Köfte"],["Kredi Kartı","Hediye Çeki"],["Doğa Yürüyüşü","Kaya Tırmanışı"],["Bebek Arabası","Tekerlekli Sandalye"],["Oyun Hamuru","Kinetik Kum"],["Mercimek Çorbası","Ezogelin Çorbası"],["Sertab Erener","Şebnem Ferah"],["Hidayet Türkoğlu","Mehmet Okur"],["Sanal Gerçeklik","Metaverse Dünyası"],["Deri Eldiven","Yün Çorap"],["Milli Piyango","Kazı Kazan"],["Fatih Altaylı","Murat Bardakçı"],["Nuri Bilge Ceylan","Zeki Demirkubuz"],["Patates Kızartması","Elma Dilim"],["Uğur Dündar","Ali Kırca"],["Sıfır Atık","Geri Dönüşüm"],["Elon Musk","Jeff Bezos"],["İmza Günü","Basın Toplantısı"],["Milli Kütüphane","Kitap Fuarı"],["Güneş Gözlüğü","Kaynak Maskesi"],["Halit Ergenç","Ozan Güven"],["Filtresiz Fotoğraf","Photoshoplu Kare"],["Sakal Tıraşı","Saç Kesimi"],["Meryem Uzerli","Vahide Perçin"],["Maden Ocağı","Taş Ocağı"],["Bulaşık Deterjanı","Çamaşır Suyu"],["Mabel Matiz","Melike Şahin"],["Altın Madalyon","Gümüş Kupa"],["Kayahan","Nilüfer"],["Seda Sayan","Esra Erol"],["Vişne Suyu","Nar Ekşisi"],["Erling Haaland","Kylian Mbappe"],["Mutfak Önlüğü","İşçi Tulumu"],["Yalın","Gökhan Türkmen"],["İrmik Helvası","Un Helvası"],["Rüzgar Gülü","Pervane Kanadı"],["Ebrar Karakurt","Zehra Güneş"],["Dip Akıntısı","Gel Git"],["Kıraç","Yaşar"],["Yedek Lastik","Kriko Seti"],["Sıcak Su","Termal Kaplıca"],["Demir Kapı","Tahta Kapı"],["Yağmur Çizmesi","Kar Botu"],["Masaüstü Bilgisayar","Dizüstü Bilgisayar"],["Rafet El Roman","Ferhat Göçer"],["Zeynep Bastık","Karsu"],["Son Durak","İlk Adım"],["Balayı Tatili","İş Gezisi"],["Sabah Şekeri","Gece Kuşu"],["Fosil Yakıt","Güneş Enerjisi"],["Haber Bülteni","Tartışma Programı"],["İpek Şal","Yün Atkı"],["Tütsü Kokusu","Oda Parfümü"],["Yol Ayrımı","Kör Nokta"],["Trafik Levhası","Yol Tabelası"],["Gece Lambası","Sokak Direği"],["Kutup Yıldızı","Çoban Yıldızı"],["Sütlü Nuriye","Fıstıklı Baklava"],["Vantilatör Pervanesi","Klima Ünitesi"],["Otobüs Terminali","Tren Garı"],["Semt Pazarı","Bit Pazarı"],["Çocuk Parkı","Piknik Alanı"],["Yüzme Havuzu","Deniz Kıyısı"],["Askerlik Şubesi","Nüfus Müdürlüğü"],["Özel Okul","Devlet Kursu"],["Sanat Merkezi","Kültür Evi"],["Düğün Konvoyu","Cenaze Arabası"],["Güzellik Salonu","Spor Salonu"],["Çeyiz Mağazası","Züccaciye Dükkanı"],["İnşaat Alanı","Yol Çalışması"],["USB Bellek","Hafıza Kartı"],["Power Bank","Şarj Aleti"],["Diş Polikliniği","Göz Merkezi"],["Duvar Aynası","Makyaj Aynası"],["Otobüs Durağı","Taksi Durağı"],["Su Isıtıcı","Termos Matara"],["Hava Alanı","Helikopter Pisti"],["Sinema Salonu","Tiyatro Sahnesi"],["Konser Alanı","Festival Alanı"],["Lunapark","Sirk Çadırı"],["Bayram Kahvaltısı","Pazar Kahvaltısı"],["Yüzme Havuzu","Su Kaydırağı"],["Kapalı Çarşı","Mısır Çarşısı"],["Balıkçı Barınağı","Yat Limanı"],["Çocuk Parkı","Kum Havuzu"],["Kripto Para","Kağıt Para"],["Tavuk Kanat","Kuzu Pirzola"],["Nüfus Müdürlüğü","Vergi Dairesi"],["Limon Sıkacağı","Ceviz Kıracağı"],["Mutfak Eldiveni","Kaleci Eldiveni"],["Sakal Serumu","Saç Bakımı"],["Dondurma Külahı","Kağıt Helva"],["Diş Macunu","Tıraş Köpüğü"],["Gece Kulübü","Bar Taburesi"],["Vişne Çürüğü","Yavru Ağzı"],["Sokak Sanatı","Duvar Yazısı"],["Altın Kolye","Gümüş Bileklik"],["Kış Uykusu","Öğle Şekerlemesi"],["İtfaiye Eri","Cankurtaran Ekibi"],["Yol Arkadaşı","Hayat Ortağı"],["Gök Gürültüsü","Şimşek Çakması"],["Yağmur Ormanı","Çöl Kumulu"],["Uçan Balon","Zeplin"],["Deniz Kabuğu","Mercan Resifi"],["Haber Spikeri","Maç Anlatıcısı"],["Polis Telsizi","Bebek Telsizi"],["Yapay Çiçek","Kuru Dal"],["Sihirbazlık Gösterisi","Sirk Performansı"],["Güneş Saati","Kum Saati"],["Uzay Mekiği","Savaş Jeti"],["Beden Eğitimi","Müzik Dersi"],["Sözlü Sınav","Test Kitabı"],["Öğrenci Kartı","Personel Kartı"],["Yemek Tarifi","Diyet Listesi"],["Pazar Kahvaltısı","Beş Çayı"],["Yüzme Kursu","Tenis Dersi"],["Paraşüt Atlayışı","Bungee Jumping"],["Şehir Turu","Müze Gezisi"],["Özel Şoför","Vale Hizmeti"],["Kuru Temizleme","Terzi Dikimi"],["Ayakkabı Boyası","Cila Kutusu"],["Anahtar Deliği","Kapı Kolu"],["Pencere Camı","Ayna Yüzeyi"],["Kayıp Eşya","Emanet Bürosu"],["Rüzgar Gülü","Su Değirmeni"],["Geri Vites","El Freni"],["Pasaport Kontrol","Gümrük Kapısı"],["Döviz Bürosu","Altın Borsası"],["Nüfus Kaydı","İkametgah Belgesi"],["Bilgi Yarışması","Kelime Oyunu"],["Şans Oyunları","Zeka Testi"],["Gülme Krizi","Ağlama Duvarı"],["Hafıza Kartı","Hard Disk"],["Ekran Kartı","Ana Kart"],["Mutfak Tartısı","Banyo Terazisi"],["Şifreli Kilit","Parmak İzi"],["Yüz Tanıma","Ses Analizi"],["Akıllı Lamba","Sensörlü Işık"],["Sanal Gözlük","Dron Kamerası"],["Uzaktan Eğitim","Yüz Yüze"],["Dizi Finali","Film Galası"],["Kırmızı Halı","Sahne Işığı"],["Alkış Tufanı","Islık Sesi"],["Sahne Tozu","Kulis Arkası"],["Başrol Oyuncusu","Yardımcı Karakter"],["Dublör Sanatçısı","Seslendirme Ustası"],["Senaryo Taslağı","Roman Özeti"],["Kapak Tasarımı","Sayfa Düzeni"],["Nazar Boncuğu","At Nalı"],["Kısır Partisi","Altın Günü"],["Meyve Tabağı","Çerez Tabağı"],["Sahur Vakti","İftar Sofrası"],["Tavla Partisi","Okey Masası"],["Türk Hamamı","Sauna Odası"],["Kese Kağıdı","Naylon Poşet"],["Pazar Filesi","Bez Çanta"],["Semaver Çayı","Demlik Çayı"],["Pamuk Şeker","Osmanlı Macunu"],["Elma Şekeri","Horoz Şekeri"],["Közde Kahve","Kumda Kahve"],["Bakır Kazan","Toprak Çömlek"],["Yün Yorgan","Pamuk Yastık"],["Dantel Örtü","Mutfak Bezi"],["Gırgır Süpürge","Faraş Küreği"],["Gaz Lambası","Mum Işığı"],["Radyo Tiyatrosu","Sesli Kitap"],["Gramer Kitabı","Sözlük Defteri"],["Kurşun Kalem","Uçlu Kalem"],["Resim Defteri","Müzik Defteri"],["Okul Öncesi","İlkokul Bir"],["Sınıf Başkanı","Okul Müdürü"],["Veliefendi Hipodromu","At Yarışı"],["Piyango Bileti","Spor Loto"],["Balık Oltası","Ağ Atma"],["Deniz Feneri","Sahil Güvenlik"],["Cankurtaran Kulesi","İskele Başı"],["Güneş Kremi","Bronzlaştırıcı Yağ"],["Plaj Havlusu","Şezlong Minderi"],["Kar Topu","Kardan Adam"],["Kızak Kayma","Kayak Takımı"],["Paten Sürme","Kaykay Yapma"],["Dağ Bisikleti","Yol Bisikleti"],["Elektrikli Scooter","Kaykay Tahtası"],["Kask Takma","Dizlik Seti"],["Spor Salonu","Fitness Merkezi"],["Pilates Matı","Yoga Bloğu"],["Dambıl Seti","Ağırlık Plakası"],["Koşu Bandı","Kondisyon Bisikleti"],["Ter Atma","Yağ Yakma"],["Diyet Kola","Şekersiz Çay"],["Meyve Sıkacağı","Smoothie Makinesi"],["Filtre Torbası","Kapsül Kahve"],["Akıllı Saat","Bileklik Takipçi"],["Sanal Asistan","Sesli Komut"],["Dokunmatik Ekran","Tuşlu Takım"],["Ekran Koruyucu","Telefon Kılıfı"],["Hızlı Şarj","Kablosuz Şarj"],["İnternet Kafe","Oyun Salonu"],["E-Spor Turnuvası","Satranç Maçı"],["Zeka Küpü","Yapboz Seti"],["Lego Parçası","Maket Araba"],["Uzaktan Kumanda","Joystick Kolu"],["Drone Çekimi","Aksiyon Kamerası"],["Selfie Çubuğu","Tripod Ayak"],["Flash Patlaması","Gece Modu"],["Geniş Açı","Portre Çekim"],["Bulut Depolama","Harici Bellek"],["Şifre Unutma","Güvenlik Sorusu"],["Yüz Tanıma","Parmak İzi"],["Spam Kutusu","Gelen Kutusu"],["Görüntülü Arama","Konferans Görüşme"],["Mavi Ekran","Sistem Hatası"],["Format Atma","Yazılım Güncelleme"],["Antivirüs Programı","Güvenlik Duvarı"],["Wi-Fi Şifresi","Mobil Veri"],["Uçak Modu","Rahatsız Etme"],["Ekran Parlaklığı","Gece Işığı"],["Piksel Kaybı","Çözünürlük Farkı"],["Ses Kaydı","Müzik Çalar"],["Radyo Yayını","Televizyon Kanalı"],["Dizi İzleme","Sinema Keyfi"],["Patlamış Mısır","Nacho Cips"],["Kola Bardağı","Ayran Maşrapası"],["Çay Tabağı","Su Bardağı"],["Çatal Bıçak","Kaşık Seti"],["Servis Tabağı","Çorba Kasesi"],["Tuzluk Takımı","Karabiberlik"],["Ekmek Sepeti","Peçetelik"],["Masa Örtüsü","Amerikan Servis"],["Mutfak Dolabı","Kiler Rafı"],["Buzdolabı Magneti","Mutfak Saati"],["Bulaşık Makinesi","Çamaşır Kazanı"],["Ütü Masası","Kıyafet Askısı"],["Elbise Dolabı","Ayakkabılık"],["Boy Aynası","El Aynası"],["Tarak Fırçası","Saç Tokası"],["Kolonya Şişesi","Gülsuyu"],["Sıvı Sabun","Kalıp Sabun"],["Şampuan Kutusu","Saç Kremi"],["Diş Fırçası","Diş İpi"],["Tıraş Bıçağı","Epilasyon Aleti"],["Bornoz Takımı","Havlu Seti"],["Banyo Terliği","Plaj Terliği"],["Yatak Odası","Oturma Grubu"],["Köşe Takımı","Berjer Koltuk"],["Orta Sehpa","Zigon Sehpa"],["Kitaplık Rafı","Çalışma Masası"],["Masa Lambası","Ayaklı Lambader"],["Duvar Saati","Kum Saati"],["Tablo Çerçevesi","Fotoğraf Albümü"],["Stor Perde","Tül Perde"],["Güneşlik","Fon Perdesi"],["Parke Zemin","Halı Kaplama"],["Kapı Paspası","Yolluk Halı"],["Balkon Masası","Bahçe Sandalyesi"],["Saksı Toprağı","Bahçe Gübresi"],["Sulama Kabı","Bahçe Hortumu"],["Budama Makası","Çim Biçme"],["Sarmaşık Gül","Çam Ağacı"],["Kaya Bahçesi","Yapay Havuz"],["Barbekü Keyfi","Kamp Ateşi"],["Termos Çanta","Piknik Sepeti"],["Hamak Keyfi","Salıncak Sırası"],["Şehir Parkı","Millet Bahçesi"],["Yürüyüş Yolu","Bisiklet Şeridi"],["Üst Geçit","Alt Geçit"],["Yaya Geçidi","Trafik Lambası"],["Hız Sınırı","Radar Cezası"],["Ehliyet Sınavı","Direksiyon Dersi"],["Oto Yıkama","Lastik Tamiri"],["Benzin İstasyonu","Şarj İstasyonu"],["Yol Yardımı","Çekici Hizmeti"],["Otoban Çıkışı","Gişe Geçişi"],["Navigasyon Sesi","Harita Takibi"],["Emniyet Şeridi","Kör Nokta"],["Park Sensörü","Geri Görüş"],["Sunroof Camı","Yan Dikiz"],["Merkezi Kilit","Alarm Sesi"],["Trafik Sigortası","Kasko Paketi"],["Ekspertiz Raporu","Muayene İstasyonu"],["İkinci El","Sıfır Kilometre"],["Klasik Araba","Spor Araba"],["Off-Road","Şehir Sürüşü"],["Karavan Tatili","Çadır Kampı"],["Butik Otel","Tatil Köyü"],["Her Şey Dahil","Yarım Pansiyon"],["Açık Büfe","Sıra Gecesi"],["Yöresel Lezzet","Dünya Mutfağı"],["Sokak Lezzeti","Gurme Restoran"],["Esnaf Lokantası","Zincir Fast-Food"],["Yıldız Kayması","Dilek Tutma"],["Bahşiş Kutusu","Hesap Pusulası"],["Kantin Sırası","Yemekhane Fişi"],["Öğrenci Yurdu","Kiralık Daire"],["Apartman Aidatı","Kira Kontratı"],["Emlak Ofisi","Tapu Dairesi"],["Noter Onayı","İmza Sirküsü"],["Banka Şubesi","ATM Cihazı"],["Altın Hesabı","Vadeli Mevduat"],["Borsa İstanbul","Döviz Kuru"],["Kredi Başvurusu","Borç Kapatma"],["Profiterol","Ekler Pasta"],["Emeklilik Hayali","İş Kurma"],["Girişimci Ruhu","Beyaz Yaka"],["Ofis Ortamı","Evden Çalışma"],["Toplantı Odası","Mola Alanı"],["Şirket Aracı","Yemek Kartı"],["Yıllık İzin","Resmi Tatil"],["Hafta Sonu","Pazartesi Sendromu"],["Sütlaç","Muhallebi"],["Doğum Günü","Yıl Dönümü"],["Sürpriz Parti","Kutlama Mesajı"],["Hediye Paketi","Tebrik Kartı"],["Düğün Takısı","Çeyrek Altın"],["Gelin Arabası","Sünnet Konvoyu"],["Nişan Yüzüğü","Söz Tepsisi"],["Kız İsteme","Kahve İkramı"],["Bayram Şekeri","Kurban Eti"],["Haciz Memuru","Vergi Müfettişi"],["Mahkeme Salonu","Hukuk Bürosu"],["Avukat Cübbesi","Hakim Tokmağı"],["Adli Sicil","Sabıka Kaydı"],["Polis Sireni","Ambulans Sesi"],["Hasta Randevusu","Eczane Kuyruğu"],["Reçete Yazımı","Sağlık Ocağı"],["Lahmacun","Kıymalı Pide"],["Kan Tahlili","Check-up"],["Diş Ağrısı","Göz Bozukluğu"],["Güneş Çarpması","Deniz Tutması"],["Künefe","Kadayıf"],["Panik Atak","Derin Nefes"],["Meditasyon","Doğa Sesleri"],["Pişi","Lokma"],["Boyoz","Gevrek"],["Güneş Batışı","Şafak Vakti"]];
 let fullHavuz = kelimeHavuzu;
-
-function checkGameEnd() {
-    let alive = currentGame.playersSnapshot.filter(p => p.alive);
-    let moleCount = alive.filter(p => currentGame.spyNames.includes(p.name)).length;
-    let civilCount = alive.filter(p => !currentGame.spyNames.includes(p.name)).length;
-    
-    // Köstebek ≥ Sivil ise oyun biter
-    if(moleCount >= civilCount && (moleCount + civilCount) >= 2) {
-        showFinalGameResults(true);
-        return true;
-    }
-    // Tüm köstebekler elendiyse siviller kazanır
-    if(moleCount === 0 && civilCount > 0) {
-        showFinalGameResults(false);
-        return true;
-    }
-    return false;
-}
+let repeatCount = 0;
 
 function createRandomDiscussionOrder(playersList,mode,spyNames){
     let pn=playersList.map(p=>p.name);
@@ -590,9 +573,6 @@ function calculateResults(){
     if(!isHost) return;
     voteStarted=false; if(voteTimer) clearInterval(voteTimer);
     
-    // Önce oyun sonu kontrolü
-    if(checkGameEnd()) return;
-    
     let alive = currentGame.playersSnapshot.filter(p=>p.alive);
     let moleCount = alive.filter(p => currentGame.spyNames.includes(p.name)).length;
     let civilCount = alive.filter(p => !currentGame.spyNames.includes(p.name)).length;
@@ -638,6 +618,14 @@ function calculateResults(){
     let isSpy = currentGame.spyNames.includes(target);
     let isLastRound = (currentGame.currentRound >= currentGame.totalRounds);
     
+    // TÜM KÖSTEBEKLER ELENDİ Mİ KONTROLÜ
+    let allSpiesDead = currentGame.spyNames.every(spy => !currentGame.playersSnapshot.find(p=>p.name===spy).alive);
+    
+    if(allSpiesDead){
+        showFinalGameResults(false);
+        return;
+    }
+    
     if(isSpy){
         targetPlayer.alive = false;
         let bilenler = [];
@@ -649,8 +637,8 @@ function calculateResults(){
                 bilenler.push(p.name);
             }
         }
-        // Köstebek bulunduktan sonra tekrar oyun sonu kontrolü
-        let gameEnded = isLastRound || checkGameEnd();
+        // Köstebek bulundu - SONRAKİ KELİME butonu gelir (son kelime değilse)
+        let gameEnded = isLastRound;
         let resultData = { title: "🎯 DOĞRU TAHMİN!", body: `<b>${target}</b> köstebekti! ✅ Bilenler: ${bilenler.length ? bilenler.join(', ') : 'Kimse bilemedi'}`, gameEnded: gameEnded, needNewDiscussion: false, isLastRound: isLastRound };
         broadcast({type:'result_sync', resultData});
         showResultScreen(resultData);
@@ -663,8 +651,7 @@ function calculateResults(){
             let oidx = players.findIndex(pp=>pp.name===spy);
             if(oidx !== -1) players[oidx].score += 1;
         });
-        // Sivil elendikten sonra oyun sonu kontrolü (1 köstebek + 1 sivil kaldıysa oyun biter)
-        if(checkGameEnd()) return;
+        // Sivil elendi - TEKRAR TARTIŞ butonu gelir
         let resultData = { title: "❌ YANLIŞ KİŞİ!", body: `<b>${target}</b> masumdu. Köstebekler +1 puan. Aynı kelime çiftiyle yeni tur başlıyor. Lider 'TEKRAR TARTIŞ' butonuna bassın.`, gameEnded: false, needNewDiscussion: true };
         broadcast({type:'result_sync', resultData});
         showResultScreen(resultData);
@@ -704,7 +691,6 @@ function showResultScreen(data){
     });
     document.getElementById('result-scoreboard').innerHTML = sh;
     
-    // Buton sadece liderde göster
     if(isHost){
         document.getElementById('next-round-btn-area').classList.remove('hidden');
         let btn = document.getElementById('actionBtn');
@@ -714,7 +700,6 @@ function showResultScreen(data){
             btn.onclick = () => { showFinalGameResults(false); };
         } else if(needNewDiscussion){
             btn.onclick = () => {
-                // TEKRAR TARTIŞ - Aynı kelime çiftiyle devam
                 let remainingPlayers = currentGame.playersSnapshot.filter(p=>p.alive);
                 let newDiscussionOrder = createRandomDiscussionOrder(remainingPlayers, currentGame.mode, currentGame.spyNames);
                 currentGame.discussionOrder = newDiscussionOrder;
@@ -727,7 +712,6 @@ function showResultScreen(data){
             };
         } else {
             btn.onclick = () => {
-                // SONRAKİ KELİME
                 if(currentGame.currentRound < currentGame.totalRounds){
                     currentGame.currentRound++;
                     broadcast({type:'next_round'});
