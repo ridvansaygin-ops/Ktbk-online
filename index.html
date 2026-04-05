@@ -112,6 +112,7 @@
 
 <script>
    // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
+    // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
 let peer, myId, myName, isHost = false;
 let players = [];
 let connections = {};
@@ -205,7 +206,7 @@ function toggleWhatsappMode() {
 }
 function odaKur() {
     myName = document.getElementById('nameInput').value.trim();
-    if(!myName || myName.length<2) { alert("Geçerli isim girin"); return; }
+    if(!myName || myName.length<2) { alert("Geçerli isim"); return; }
     isHost = true;
     myId = "KST-"+Math.random().toString(36).substr(2,6).toUpperCase();
     peer = new Peer(myId, { secure: true });
@@ -349,7 +350,7 @@ if(joinId) {
             <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
             <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
             <p>🚫 3 PAS ile eleme yok, 3+ PAS oylama tekrarı</p>
-            <p>⚖️ Beraberlikte oylama tekrarı</p>
+            <p>⚖️ Beraberlikte oylama tekrarı | Köstebek ≥ Sivil ise KÖSTEBEK KAZANIR</p>
             <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "📱 WHATSAPP MODU" ile tüm sesler kapatılır.</p>
         </div>
     `;
