@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V33 | SON KURALLAR</title>
+    <title>GAFİL KÖSTEBEK | ONLINE SESLİ</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -15,7 +15,7 @@
         .btn-katil{background:#ff4d4d;color:#fff}
         .btn-exit{background:#330000;color:#ff8888;border:1px solid #800}
         .btn-chat{background:#2e7d32;color:#fff}
-        .btn-online{background:#25D366;color:#fff}
+        .btn-whatsapp{background:#25D366;color:#fff}
         input{width:100%;padding:14px;margin:8px 0;border-radius:28px;background:#1a1a1a;color:#fff;border:1px solid #333;text-align:center}
         .player-card{background:#151515;padding:12px;margin:8px 0;border-radius:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
         .word-box{background:#0f0f0f;border:3px dashed #555;padding:40px 10px;font-size:2.2em;margin:20px 0;border-radius:28px;color:#ffd700}
@@ -39,7 +39,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[V33]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE SESLİ]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -52,7 +52,7 @@
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 PAS ile eleme yok, 3+ PAS oylama tekrarı</p>
                 <p>⚖️ Beraberlikte oylama tekrarı | Köstebek ≥ Sivil ise KÖSTEBEK KAZANIR</p>
-                <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "🔊 ONLINE SESLİ" ile tüm sesler kapatılır.</p>
+                <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "📱 WHATSAPP MODU" ile tüm sesler kapatılır.</p>
             </div>
         </div>
         <div id="lobby-area" class="hidden">
@@ -63,7 +63,7 @@
                 <button class="btn btn-gafil" onclick="oyunuBaslat('gafil')">🎭 GAFİL MODU</button>
                 <button class="btn btn-katil" onclick="oyunuBaslat('katil')">🔪 KATİL MODU</button>
                 <button id="lobbyChatBtn" class="btn btn-chat" onclick="toggleLobbyChat()">🎙️ SOHBET AÇ</button>
-                <button id="onlineModeBtn" class="btn btn-online" onclick="toggleOnlineMode()">🔊 ONLINE SESLİ KAPALI</button>
+                <button id="whatsappModeBtn" class="btn btn-whatsapp" onclick="toggleWhatsappMode()">📱 WHATSAPP MODU KAPALI</button>
             </div>
             <div><span>👥 BAĞLI: <span id="lobby-count">0</span></span></div>
         </div>
@@ -111,7 +111,7 @@
 </div>
 
 <script>
-// // ========== 2. PARÇA: PEERJS + ONLINE SESLİ MODU ==========
+/// ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
 let peer, myId, myName, isHost = false;
 let players = [];
 let connections = {};
@@ -119,7 +119,7 @@ let remoteStreams = {};
 let localStream = null;
 let myMicEnabled = true;
 let lobbyChatActive = false;
-let onlineModeActive = false;
+let whatsappModeActive = false;
 let currentGame = { mode: "", spyNames: [], pair: null, playersSnapshot: [], votes: {}, playerVotes: {}, currentRound: 1, totalRounds: 5, discussionOrder: [] };
 let discussionActive = false, currentSpeakerIdx = 0, currentSpeakerName = "", leaderConfirmed = false, voteTimer = null, myAssignedWord = "", voteStarted = false, hasVoted = false, leaderTimer = null, currentTime = 30;
 
@@ -151,7 +151,7 @@ function toggleLocalMic(enable) {
     if(localStream) { localStream.getAudioTracks().forEach(t => t.enabled = enable); myMicEnabled = enable; renderLobby(); }
 }
 function callAllPlayers() {
-    if(onlineModeActive) return;
+    if(whatsappModeActive) return;
     for(let p of players) {
         if(p.name !== myName && p.peerId && !remoteStreams[p.name]) {
             const call = peer.call(p.peerId, localStream, { metadata: { name: myName } });
@@ -168,7 +168,7 @@ function callAllPlayers() {
     }
 }
 function toggleLobbyChat() {
-    if(!isHost || onlineModeActive) return;
+    if(!isHost || whatsappModeActive) return;
     lobbyChatActive = !lobbyChatActive;
     const btn = document.getElementById('lobbyChatBtn');
     if(lobbyChatActive) {
@@ -185,21 +185,21 @@ function toggleLobbyChat() {
         broadcast({ type: 'lobby_chat_off' });
     }
 }
-function toggleOnlineMode() {
+function toggleWhatsappMode() {
     if(!isHost) return;
-    onlineModeActive = !onlineModeActive;
-    const btn = document.getElementById('onlineModeBtn');
-    if(onlineModeActive) {
-        btn.innerHTML = "🔊 ONLINE SESLİ AÇIK ✅";
+    whatsappModeActive = !whatsappModeActive;
+    const btn = document.getElementById('whatsappModeBtn');
+    if(whatsappModeActive) {
+        btn.innerHTML = "📱 WHATSAPP MODU AÇIK ✅";
         btn.style.background = "#128C7E";
         toggleLocalMic(false);
         for(let name in remoteStreams) remoteStreams[name].muted = true;
         if(lobbyChatActive) toggleLobbyChat();
-        broadcast({ type: 'online_mode_on' });
+        broadcast({ type: 'whatsapp_mode_on' });
     } else {
-        btn.innerHTML = "🔊 ONLINE SESLİ KAPALI";
+        btn.innerHTML = "📱 WHATSAPP MODU KAPALI";
         btn.style.background = "#25D366";
-        broadcast({ type: 'online_mode_off' });
+        broadcast({ type: 'whatsapp_mode_off' });
     }
 }
 function odaKur() {
@@ -267,20 +267,20 @@ function handleDataMessage(d, conn) {
             connections[d.name] = conn;
             broadcast({ type: 'sync', players: players.map(p=>({ name:p.name, score:p.score, alive:p.alive, peerId:p.peerId })) });
             renderLobby();
-            if(localStream && !onlineModeActive) callAllPlayers();
+            if(localStream && !whatsappModeActive) callAllPlayers();
         }
-    } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); if(!onlineModeActive) callAllPlayers(); }
-    else if(d.type === 'lobby_chat_on') { if(!isHost && !onlineModeActive) { lobbyChatActive = true; toggleLocalMic(true); for(let n in remoteStreams) remoteStreams[n].muted = false; } }
-    else if(d.type === 'lobby_chat_off') { if(!isHost && !onlineModeActive) { lobbyChatActive = false; toggleLocalMic(false); for(let n in remoteStreams) remoteStreams[n].muted = true; } }
-    else if(d.type === 'online_mode_on') { if(!isHost) { onlineModeActive = true; toggleLocalMic(false); for(let n in remoteStreams) remoteStreams[n].muted = true; } }
-    else if(d.type === 'online_mode_off') { if(!isHost) { onlineModeActive = false; } }
-    else if(d.type === 'force_mic_off') { if(d.target === myName && !onlineModeActive) toggleLocalMic(false); }
+    } else if(d.type === 'sync' && !isHost) { players = d.players; renderLobby(); if(!whatsappModeActive) callAllPlayers(); }
+    else if(d.type === 'lobby_chat_on') { if(!isHost && !whatsappModeActive) { lobbyChatActive = true; toggleLocalMic(true); for(let n in remoteStreams) remoteStreams[n].muted = false; } }
+    else if(d.type === 'lobby_chat_off') { if(!isHost && !whatsappModeActive) { lobbyChatActive = false; toggleLocalMic(false); for(let n in remoteStreams) remoteStreams[n].muted = true; } }
+    else if(d.type === 'whatsapp_mode_on') { if(!isHost) { whatsappModeActive = true; toggleLocalMic(false); for(let n in remoteStreams) remoteStreams[n].muted = true; } }
+    else if(d.type === 'whatsapp_mode_off') { if(!isHost) { whatsappModeActive = false; } }
+    else if(d.type === 'force_mic_off') { if(d.target === myName && !whatsappModeActive) toggleLocalMic(false); }
     else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
     else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
     else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
     else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
     else if(d.type === 'disc_start') {
-        if(!isHost && !onlineModeActive) {
+        if(!isHost && !whatsappModeActive) {
             currentSpeakerName = d.speakerName;
             document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
             document.getElementById('discussion-area').classList.remove('hidden');
@@ -288,7 +288,7 @@ function handleDataMessage(d, conn) {
             if(d.speakerName === myName) toggleLocalMic(true);
             else toggleLocalMic(false);
             for(let name in remoteStreams) remoteStreams[name].muted = (name !== d.speakerName);
-        } else if(!isHost && onlineModeActive) {
+        } else if(!isHost && whatsappModeActive) {
             currentSpeakerName = d.speakerName;
             document.getElementById('speaker-name').innerHTML = "🎤 "+d.speakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
             document.getElementById('discussion-area').classList.remove('hidden');
@@ -301,9 +301,9 @@ function handleDataMessage(d, conn) {
     else if(d.type === 'vote_start') { if(!isHost) startVotingPhase(); }
     else if(d.type === 'reset_to_lobby') { if(!isHost) resetToLobby(); }
     else if(d.type === 'set_speaker_mic') {
-        if(!isHost && !onlineModeActive && d.speakerName === myName) toggleLocalMic(true);
-        else if(!isHost && !onlineModeActive && d.speakerName !== myName) toggleLocalMic(false);
-        if(!onlineModeActive) for(let name in remoteStreams) remoteStreams[name].muted = (name !== d.speakerName);
+        if(!isHost && !whatsappModeActive && d.speakerName === myName) toggleLocalMic(true);
+        else if(!isHost && !whatsappModeActive && d.speakerName !== myName) toggleLocalMic(false);
+        if(!whatsappModeActive) for(let name in remoteStreams) remoteStreams[name].muted = (name !== d.speakerName);
     }
 }
 function broadcast(data) { if(isHost) Object.values(connections).forEach(c=>c.send(data)); }
@@ -312,12 +312,12 @@ function renderLobby() {
     document.getElementById('player-list').innerHTML = sorted.map((p,idx)=> {
         let rankClass = idx===0?'rank-0':idx===1?'rank-1':idx===2?'rank-2':'';
         let micBtn = "";
-        if(p.name === myName && !onlineModeActive) {
+        if(p.name === myName && !whatsappModeActive) {
             let micClass = myMicEnabled ? "mic-on" : "mic-off";
             let micText = myMicEnabled ? "🎙️ AÇIK" : "🔇 KAPALI";
             micBtn = `<button class="mic-toggle ${micClass}" onclick="toggleLocalMic(!myMicEnabled)">${micText}</button>`;
-        } else if(p.name === myName && onlineModeActive) {
-            micBtn = `<button class="mic-toggle mic-off" disabled style="opacity:0.5">🔇 ONLINE MOD</button>`;
+        } else if(p.name === myName && whatsappModeActive) {
+            micBtn = `<button class="mic-toggle mic-off" disabled style="opacity:0.5">🔇 WHATSAPP MODU</button>`;
         }
         let removeBtn = (isHost && p.name !== myName) ? `<button class="btn-exit" onclick="removePlayer('${p.name}')">✖️</button>` : '';
         return `<div class="player-card ${rankClass}"><div>👤 <b>${p.name}</b> 🎯 ${p.score}</div><div>${micBtn}${removeBtn}</div></div>`;
@@ -349,7 +349,7 @@ if(joinId) {
             <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
             <p>🚫 3 PAS ile eleme yok, 3+ PAS oylama tekrarı</p>
             <p>⚖️ Beraberlikte oylama tekrarı | Köstebek ≥ Sivil ise KÖSTEBEK KAZANIR</p>
-            <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "🔊 ONLINE SESLİ" ile tüm sesler kapatılır.</p>
+            <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "📱 WHATSAPP MODU" ile tüm sesler kapatılır.</p>
         </div>
     `;
 }
@@ -419,7 +419,7 @@ function finishRevealAndStartGame(){
     document.getElementById('game-word-box').classList.remove('hidden');
     if(isHost) document.getElementById('host-action').classList.remove('hidden');
     document.getElementById('discussion-area').classList.add('hidden');
-    if(!onlineModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
+    if(!whatsappModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
 }
 function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
 function startDiscussion(){
@@ -435,7 +435,7 @@ function startDiscussion(){
     document.getElementById('discussion-area').classList.remove('hidden');
     document.getElementById('timer-display').innerText = currentTime;
     document.getElementById('host-action').classList.add('hidden');
-    if(!onlineModeActive) {
+    if(!whatsappModeActive) {
         if(currentSpeakerName === myName) toggleLocalMic(true);
         else toggleLocalMic(false);
         for(let name in remoteStreams) remoteStreams[name].muted = (name !== currentSpeakerName);
@@ -449,7 +449,7 @@ function startDiscussion(){
         broadcast({ type: 'timer_update', time: currentTime });
         if(currentTime <= 0){
             clearInterval(leaderTimer);
-            if(!onlineModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
+            if(!whatsappModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
             nextSpeaker();
         }
     }, 1000);
@@ -457,8 +457,8 @@ function startDiscussion(){
 function nextSpeaker(){
     if(!isHost || !discussionActive) return;
     clearInterval(leaderTimer);
-    if(!onlineModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
-    if(!onlineModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
+    if(!whatsappModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
+    if(!whatsappModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
     currentSpeakerIdx++;
     if(currentSpeakerIdx < currentGame.discussionOrder.length){
         currentSpeakerName = currentGame.discussionOrder[currentSpeakerIdx];
@@ -468,7 +468,7 @@ function nextSpeaker(){
         broadcast({ type: 'set_speaker_mic', speakerName: currentSpeakerName });
         document.getElementById('speaker-name').innerHTML = "🎤 "+currentSpeakerName+' <span class="speaker-indicator">KONUŞUYOR</span>';
         document.getElementById('timer-display').innerText = currentTime;
-        if(!onlineModeActive) {
+        if(!whatsappModeActive) {
             if(currentSpeakerName === myName) toggleLocalMic(true);
             for(let name in remoteStreams) remoteStreams[name].muted = (name !== currentSpeakerName);
         }
@@ -479,7 +479,7 @@ function nextSpeaker(){
             broadcast({ type: 'timer_update', time: currentTime });
             if(currentTime <= 0){
                 clearInterval(leaderTimer);
-                if(!onlineModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
+                if(!whatsappModeActive && currentSpeakerName !== myName) broadcast({ type: 'force_mic_off', target: currentSpeakerName });
                 nextSpeaker();
             }
         }, 1000);
@@ -488,7 +488,7 @@ function nextSpeaker(){
         document.getElementById('discussion-area').classList.add('hidden');
         document.getElementById('leader-next-speaker-area').classList.add('hidden');
         if(leaderTimer) clearInterval(leaderTimer);
-        if(!onlineModeActive) {
+        if(!whatsappModeActive) {
             for(let p of players) if(p.name !== myName) broadcast({ type: 'force_mic_off', target: p.name });
             toggleLocalMic(false);
             for(let name in remoteStreams) remoteStreams[name].muted = true;
@@ -547,6 +547,12 @@ function calculateResults(){
     let civilCount = alive.filter(p => !currentGame.spyNames.includes(p.name)).length;
     let pasCount = Object.values(currentGame.playerVotes).filter(v => v === 'PAS').length;
     
+    // OYUN SONU KONTROLÜ: Köstebek sayısı ≥ Sivil sayısı
+    if(moleCount >= civilCount && (moleCount + civilCount) >= 2){
+        showFinalGameResults(true);
+        return;
+    }
+    
     // 3+ PAS kuralı
     if(pasCount >= 3){
         addChatMessage("Sistem", "⚠️ 3 veya daha fazla PAS oyu! Oylama tekrarlanıyor.");
@@ -565,12 +571,6 @@ function calculateResults(){
                 calculateResults();
             }
         }, 12000);
-        return;
-    }
-    
-    // OYUN SONU KONTROLÜ: Köstebek sayısı ≥ Sivil sayısı ise KÖSTEBEK KAZANIR
-    if(moleCount >= civilCount && (moleCount + civilCount) >= 2){
-        showFinalGameResults(true);
         return;
     }
     
@@ -647,13 +647,17 @@ function calculateResults(){
         showResultScreen(resultData);
     }
 }
+function addChatMessage(sender, message) {
+    // Sohbet kaldırıldığı için sadece konsola yaz
+    console.log(sender + ": " + message);
+}
 function showResultScreen(data){
     document.getElementById('screen-vote').classList.add('hidden');
     document.getElementById('screen-result').classList.remove('hidden');
     document.getElementById('result-title').innerText = data.title;
     let nextInfo = "";
     if(data.isRepeat){
-        nextInfo = `🔄 Aynı kelime çiftiyle (${currentGame.pair[0]} - ${currentGame.pair[1]}) yeni bir tur başlıyor. Elenen oyuncu: ${data.body.split(' ')[1] || "bir oyuncu"}`;
+        nextInfo = `🔄 Aynı kelime çiftiyle (${currentGame.pair[0]} - ${currentGame.pair[1]}) yeni bir tur başlıyor.`;
     } else if(data.gameEnded){
         nextInfo = "🏆 TÜM TURLAR TAMAMLANDI! 🏆";
     } else {
@@ -760,7 +764,7 @@ function resetToLobby(){
     broadcast({type:'reset_to_lobby'});
     voteStarted=false; hasVoted=false;
     if(voteTimer) clearInterval(voteTimer);
-    if(!onlineModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
+    if(!whatsappModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
 }
 </script>
 </body>
