@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GAFİL KÖSTEBEK | V34 | KARARLI B SEÇENEĞİ</title>
+    <title>GAFİL KÖSTEBEK | ONLINE SESLİ</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         *{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -20,6 +20,8 @@
         .player-card{background:#151515;padding:12px;margin:8px 0;border-radius:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
         .word-box{background:#0f0f0f;border:3px dashed #555;padding:40px 10px;font-size:2.2em;margin:20px 0;border-radius:28px;color:#ffd700}
         .vote-item{background:#1a1a1a;padding:14px;margin:8px 0;border-radius:50px;border:1px solid #333;cursor:pointer}
+        #screen-lobby, #screen-reveal, #screen-game, #screen-vote, #screen-result { display: none; }
+        #screen-lobby { display: block; }
         .hidden{display:none !important}
         #vote-timer,#timer-display{font-size:2.5em;color:#ff4d4d;margin:10px auto;background:#1a0000;border-radius:60px;width:100px;padding:10px}
         .reveal-word-box{background:#0f0f0f;border:2px solid #ffd700;padding:20px;font-size:1.8em;margin:15px 0;border-radius:20px}
@@ -39,7 +41,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[KARARLI]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[ONLINE SESLİ]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -110,7 +112,7 @@
 </div>
 
 <script>
-// ========== 1. PARÇA SONU ==========
+// ========== 1. PARÇA SONU ========
 // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
 let peer, myId, myName, isHost = false;
 let players = [];
