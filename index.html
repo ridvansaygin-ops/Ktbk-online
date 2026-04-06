@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -51,9 +51,8 @@
                 <p>👥 3-6 oyuncu → 1 köstebek &nbsp;|&nbsp; 7-10 oyuncu → 2 köstebek</p>
                 <p>🎯 Köstebek kaçarsa +1 puan, köstebeği bilenler +1 puan</p>
                 <p>🚫 3 PAS ile eleme yok, 3+ PAS oylama tekrarı</p>
-                <p>⚖️ Beraberlikte oylama tekrarı</p>
+                <p>⚖️ Beraberlikte oylama tekrarı | Köstebek ≥ Sivil ise KÖSTEBEK KAZANIR</p>
                 <p>🎙️ Lider "SOHBET AÇ/KAPAT" ile lobide serbest konuşma | "📱 WHATSAPP MODU" ile tüm sesler kapatılır.</p>
-                <p>📌 Oyun SADECE kelime sayısı bittiğinde biter.</p>
             </div>
         </div>
         <div id="lobby-area" class="hidden">
@@ -111,7 +110,7 @@
 </div>
 
 <script>
-// ========== 1. PARÇA SONU ==========  
+// ========== 1. PARÇA SONU =======
 // ========== 2. PARÇA: PEERJS + WHATSAPP MODU ==========
 let peer, myId, myName, isHost = false;
 let players = [];
