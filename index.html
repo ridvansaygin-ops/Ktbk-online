@@ -39,7 +39,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[KARARLI]</span></h1>
+    <h1>GAFİL KÖSTEBEK <span style="font-size:0.5em;">[online sesli]</span></h1>
     <div class="sub">editör Mehmet Rıdvan Saygın</div>
 
     <div id="screen-lobby">
@@ -876,6 +876,22 @@ window.calculateResults = function() {
     // KÖSTEBEK ELENDİ
     if(isSpy){
         targetPlayer.alive = false;
+        // Tüm köstebekler öldü mü kontrol et
+let remainingSpies = currentGame.playersSnapshot.filter(p => p.alive && currentGame.spyNames.includes(p.name));
+if(remainingSpies.length === 0){
+    // Köstebek kalmadı, sonraki kelimeye geç
+    let resultData = { 
+        title: "🎉 TÜM KÖSTEBEKLER BULUNDU!", 
+        body: `Tüm köstebekler elendi! Sonraki kelimeye geçiliyor.`, 
+        gameEnded: false, 
+        needNewDiscussion: false,
+        nextWord: true
+    };
+    broadcast({type:'result_sync', resultData});
+    showResultScreen(resultData);
+    playSound('spy_caught');
+    return;
+}
         let bilenler = [];
         for(let p of currentGame.playersSnapshot){
             if(p.alive && !currentGame.spyNames.includes(p.name) && currentGame.playerVotes[p.name] === target){
