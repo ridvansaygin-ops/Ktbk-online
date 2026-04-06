@@ -809,45 +809,28 @@ function resetToLobby(){
     if(!whatsappModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
 }
 // ========== KURAL DEĞİŞTİRME EKLENTİSİ (Orijinal koda dokunmaz) ==========
-// Orijinal checkGameEnd fonksiyonunu yedekle
+// ========== YENİ KURALLAR (Anlaştığımız gibi) ==========
 const originalCheckGameEnd = checkGameEnd;
 const originalShowFinalGameResults = showFinalGameResults;
+const originalCalculateResults = calculateResults;
 
-// Yeni checkGameEnd - asla oyunu bitirme
+// 1. Oyun sonu kontrolü - sadece kelime sayısı bittiğinde bitsin
 window.checkGameEnd = function() {
+    // Kelime sayısı bitti mi?
+    if (currentGame && currentGame.currentRound > currentGame.totalRounds) {
+        return true;
+    }
+    // Normal oyun sonu koşullarını pas geç (köstebek çoğunlukta oyun bitmez)
     return false;
 };
 
-// Yeni showFinalGameResults - sadece kelime sayısı bittiğinde çağrılsın istiyoruz
-// Ama bu fonksiyon zaten sadece kelime sayısı bittiğinde çağrılacak şekilde ayarlanacak
-window.showFinalGameResults = function(moleWin) {
-    // Kelime sayısı kontrolü
-    if (currentGame.currentRound >= currentGame.totalRounds) {
-        originalShowFinalGameResults(moleWin);
-    } else {
-        // Oyun bitmez, sonraki kelimeye geç
-        if (isHost) {
-            if (currentGame.currentRound < currentGame.totalRounds) {
-                currentGame.currentRound++;
-                startNewRound();
-            }
-        }
-    }
-};
-
-// Orijinal calculateResults fonksiyonunu da yedekleyip değiştirelim
-const originalCalculateResults = calculateResults;
+// 2. Oylama sonucu işleme (kurallara göre)
 window.calculateResults = function() {
     if(!isHost) return;
-    voteStarted=false; if(voteTimer) clearInterval(voteTimer);
+    voteStarted=false; 
+    if(voteTimer) clearInterval(voteTimer);
     
-    // Önce oyun sonu kontrolü (checkGameEnd artık false dönecek)
-    if(window.checkGameEnd()) return;
-    
-    // Orijinal oylama mantığı burada çalışacak
     let alive = currentGame.playersSnapshot.filter(p=>p.alive);
-    let moleCount = alive.filter(p => currentGame.spyNames.includes(p.name)).length;
-    let civilCount = alive.filter(p => !currentGame.spyNames.includes(p.name)).length;
     let pasCount = Object.values(currentGame.playerVotes).filter(v => v === 'PAS').length;
     
     let voteMap = {};
@@ -859,6 +842,7 @@ window.calculateResults = function() {
     let isDraw = sorted.length > 1 && sorted[0][1] === sorted[1][1];
     let needRepeat = (pasCount >= 3) || (sorted.length === 0) || isDraw;
     
+    // MAKSİMUM 5 TEKRAR
     if(needRepeat && repeatCount >= 5){
         for(let spy of currentGame.spyNames){
             let idx = currentGame.playersSnapshot.findIndex(pp=>pp.name===spy);
@@ -875,12 +859,6 @@ window.calculateResults = function() {
     
     if(needRepeat){
         repeatCount++;
-        for(let spy of currentGame.spyNames){
-            let idx = currentGame.playersSnapshot.findIndex(pp=>pp.name===spy);
-            if(idx !== -1) currentGame.playersSnapshot[idx].score += 1;
-            let oidx = players.findIndex(pp=>pp.name===spy);
-            if(oidx !== -1) players[oidx].score += 1;
-        }
         let resultText = (pasCount >= 3) ? `3+ PAS oyu! (Tekrar: ${repeatCount}/5)` : `Oylama berabere! (Tekrar: ${repeatCount}/5)`;
         let resultData = { title: "⚠️ OYLAMA TEKRARLANACAK!", body: resultText + " Lider 'TEKRAR TARTIŞ' butonuna bassın.", gameEnded: false, needNewDiscussion: true };
         broadcast({type:'result_sync', resultData});
@@ -888,12 +866,14 @@ window.calculateResults = function() {
         return;
     }
     
+    // NORMAL OYLAMA SONUCU - TEKRAR YOK
     repeatCount = 0;
     let target = sorted[0][0];
     let targetPlayer = currentGame.playersSnapshot.find(p=>p.name===target);
     let isSpy = currentGame.spyNames.includes(target);
     let isLastRound = (currentGame.currentRound >= currentGame.totalRounds);
     
+    // KÖSTEBEK ELENDİ
     if(isSpy){
         targetPlayer.alive = false;
         let bilenler = [];
@@ -905,25 +885,220 @@ window.calculateResults = function() {
                 bilenler.push(p.name);
             }
         }
-        // KÖSTEBEK BULUNDU - OYUN BİTMEZ, SONRAKİ KELİME
-        let resultData = { title: "🎯 DOĞRU TAHMİN!", body: `<b>${target}</b> köstebekti! ✅ Bilenler: ${bilenler.length ? bilenler.join(', ') : 'Kimse bilemedi'}`, gameEnded: isLastRound, needNewDiscussion: false, isLastRound: isLastRound };
+        // Köstebek bulundu - OYUN BİTMEZ, TEKRAR TARTIŞ
+        let resultData = { 
+            title: `${target} - KÖSTEBEK`, 
+            body: `✅ Doğru tahmin! Bilenler: ${bilenler.length ? bilenler.join(', ') : 'Kimse bilemedi'}. Tekrar tartışma başlıyor.`, 
+            gameEnded: false, 
+            needNewDiscussion: true,
+            eliminatedPlayer: target,
+            eliminatedType: "KÖSTEBEK"
+        };
         broadcast({type:'result_sync', resultData});
         showResultScreen(resultData);
         playSound('spy_caught');
-    } else {
+    } 
+    // SİVİL ELENDİ
+    else {
         targetPlayer.alive = false;
+        // Köstebekler +1 puan alır (isimleri açıklanmaz)
         for(let spy of currentGame.spyNames){
             let idx = currentGame.playersSnapshot.findIndex(pp=>pp.name===spy);
             if(idx !== -1) currentGame.playersSnapshot[idx].score += 1;
             let oidx = players.findIndex(pp=>pp.name===spy);
             if(oidx !== -1) players[oidx].score += 1;
         }
-        // SİVİL ELENDİ - TEKRAR TARTIŞ
-        let resultData = { title: "❌ YANLIŞ KİŞİ!", body: `<b>${target}</b> masumdu. Köstebekler +1 puan. Aynı kelime çiftiyle yeni tur başlıyor. Lider 'TEKRAR TARTIŞ' butonuna bassın.`, gameEnded: false, needNewDiscussion: true };
+        // Sivil elendi - OYUN BİTMEZ, TEKRAR TARTIŞ
+        let resultData = { 
+            title: `${target} - SİVİL`, 
+            body: `❌ Yanlış kişi! Köstebekler +1 puan aldı. Tekrar tartışma başlıyor.`, 
+            gameEnded: false, 
+            needNewDiscussion: true,
+            eliminatedPlayer: target,
+            eliminatedType: "SİVİL"
+        };
         broadcast({type:'result_sync', resultData});
         showResultScreen(resultData);
         playSound('spy_escape');
     }
+};
+
+// 3. Köstebek sayısı ≥ Sivil sayısı kontrolü (her tur başında veya oylama sonunda çağrılır)
+function checkSpyMajority() {
+    if(!currentGame || !currentGame.playersSnapshot) return false;
+    
+    let alive = currentGame.playersSnapshot.filter(p => p.alive);
+    let aliveSpies = alive.filter(p => currentGame.spyNames.includes(p.name));
+    let aliveCivils = alive.filter(p => !currentGame.spyNames.includes(p.name));
+    
+    if(aliveSpies.length >= aliveCivils.length && aliveCivils.length > 0) {
+        // Köstebeklerin ismini açıkla
+        let spyNamesStr = aliveSpies.map(s => s.name).join(", ");
+        
+        // Köstebeklere +1 puan
+        for(let spy of aliveSpies){
+            spy.score += 1;
+            let origIdx = players.findIndex(pp=>pp.name===spy.name);
+            if(origIdx !== -1) players[origIdx].score += 1;
+        }
+        
+        // Sonucu göster
+        let resultData = { 
+            title: "KÖSTEBEKLER KAZANDI!", 
+            body: `Köstebekler (${spyNamesStr}) sayıca üstünlük sağladı! Her köstebek +1 puan aldı. Sonraki kelimeye geçiliyor.`, 
+            gameEnded: false, 
+            needNewDiscussion: false,
+            nextWord: true
+        };
+        showResultScreen(resultData);
+        broadcast({type:'result_sync', resultData});
+        
+        // Sonraki kelimeye geç
+        setTimeout(() => {
+            if(currentGame.currentRound < currentGame.totalRounds){
+                currentGame.currentRound++;
+                startNewRound();
+            } else {
+                showFinalGameResults(false);
+            }
+        }, 3000);
+        return true;
+    }
+    return false;
+}
+
+// 4. showResultScreen - puan durumunda o anki kelimenin puanları GÖSTERİLMEZ
+const originalShowResultScreen = showResultScreen;
+window.showResultScreen = function(data) {
+    document.getElementById('screen-vote').classList.add('hidden');
+    document.getElementById('screen-result').classList.remove('hidden');
+    document.getElementById('result-title').innerText = data.title;
+    
+    let nextInfo = "";
+    let buttonText = "";
+    let needNewDiscussion = data.needNewDiscussion;
+    
+    if(needNewDiscussion){
+        nextInfo = `🔄 Aynı kelime çiftiyle yeni bir tartışma başlayacak.`;
+        buttonText = "🔄 TEKRAR TARTIŞ";
+    } else if(data.nextWord){
+        nextInfo = `📌 Sonraki kelimeye geçiliyor...`;
+        buttonText = "⏩ SONRAKİ KELİME";
+    } else if(data.gameEnded){
+        nextInfo = "🏆 OYUN SONA ERDİ! 🏆";
+        buttonText = "🏆 SONUÇLARI GÖSTER";
+    } else {
+        nextInfo = `📌 Kelime ${currentGame.currentRound}/${currentGame.totalRounds} tamamlandı.`;
+        buttonText = "⏩ SONRAKİ KELİME";
+    }
+    
+    document.getElementById('result-body').innerHTML = `<div>${data.body}</div><div>${nextInfo}</div>`;
+    
+    // PUAN DURUMU - O an oynanan kelimeden kazanılan puanları GÖSTERME
+    // currentWordEarnedScore kontrolü yaparak geçici puanları çıkar
+    let tempScores = currentGame.playersSnapshot.map(p => {
+        // Bu kelimeden kazanılan puanı hesapla (varsa)
+        let earnedThisWord = (p._tempWordScore || 0);
+        return {
+            name: p.name,
+            displayScore: p.score - earnedThisWord
+        };
+    }).sort((a,b) => b.displayScore - a.displayScore);
+    
+    let sh = "<div>🏆 GÜNCEL PUAN DURUMU (Bu kelimenin puanları hariç) 🏆</div>";
+    tempScores.forEach((p,idx)=>{
+        let medal = idx===0?"🥇": idx===1?"🥈": idx===2?"🥉":"📌";
+        sh += `<div>${medal} ${p.name} — 🎯 ${p.displayScore}</div>`;
+    });
+    document.getElementById('result-scoreboard').innerHTML = sh;
+    
+    // Buton sadece liderde göster
+    if(isHost){
+        document.getElementById('next-round-btn-area').classList.remove('hidden');
+        let btn = document.getElementById('actionBtn');
+        btn.innerText = buttonText;
+        
+        if(data.gameEnded){
+            btn.onclick = () => { showFinalGameResults(false); };
+        } else if(needNewDiscussion){
+            btn.onclick = () => {
+                // Önce köstebek çoğunluk kontrolü yap
+                if(checkSpyMajority()) return;
+                
+                // TEKRAR TARTIŞ - Aynı kelime çiftiyle devam
+                let remainingPlayers = currentGame.playersSnapshot.filter(p=>p.alive);
+                let newDiscussionOrder = createRandomDiscussionOrder(remainingPlayers, currentGame.mode, currentGame.spyNames);
+                currentGame.discussionOrder = newDiscussionOrder;
+                document.getElementById('screen-result').classList.add('hidden');
+                document.getElementById('screen-game').classList.remove('hidden');
+                document.getElementById('wordCounter').innerHTML = `📖 ${currentGame.currentRound}/${currentGame.totalRounds}`;
+                document.getElementById('game-word-box').innerText = myAssignedWord;
+                if(isHost) document.getElementById('host-action').classList.remove('hidden');
+                startDiscussion();
+            };
+        } else if(data.nextWord){
+            btn.onclick = () => {
+                if(currentGame.currentRound < currentGame.totalRounds){
+                    currentGame.currentRound++;
+                    startNewRound();
+                } else {
+                    showFinalGameResults(false);
+                }
+            };
+        } else {
+            btn.onclick = () => {
+                if(currentGame.currentRound < currentGame.totalRounds){
+                    currentGame.currentRound++;
+                    startNewRound();
+                } else {
+                    showFinalGameResults(false);
+                }
+            };
+        }
+    } else {
+        document.getElementById('next-round-btn-area').classList.add('hidden');
+        document.getElementById('result-body').innerHTML += `<div>⏳ Lider ${buttonText} butonuna bassın...</div>`;
+    }
+    voteStarted = false;
+};
+
+// 5. startNewRound - yeni kelimeye geçerken geçici puanları sıfırla
+const originalStartNewRound = startNewRound;
+window.startNewRound = function() {
+    // Önce köstebek çoğunluk kontrolü
+    if(checkSpyMajority()) return;
+    
+    // Geçici puanları sıfırla
+    for(let p of currentGame.playersSnapshot){
+        p._tempWordScore = 0;
+    }
+    
+    originalStartNewRound();
+};
+
+// 6. Final sonuçları - tüm puanlar gösterilir
+window.showFinalGameResults = function(moleWin) {
+    let sorted = [...players].sort((a,b)=>b.score-a.score);
+    let html = "<h3>🏆 OYUN SONU 🏆</h3>";
+    if(moleWin){
+        html += "<h2 style='color:#ff4d4d'>🔻 KÖSTEBEKLER KAZANDI! 🔻</h2>";
+    } else {
+        html += "<h2 style='color:#ffd700'>🛡️ SİVİLLER KAZANDI! 🛡️</h2>";
+    }
+    html += "<h3>🏆 FİNAL SIRALAMASI (TÜM PUANLAR) 🏆</h3>";
+    sorted.forEach((p,idx)=>{
+        let medal = idx===0?"🥇": idx===1?"🥈": idx===2?"🥉":"📌";
+        html += `<div>${medal} ${p.name} — 🎯 ${p.score} puan</div>`;
+    });
+    document.getElementById('result-body').innerHTML = html;
+    document.getElementById('result-title').innerText = "🎮 OYUN BİTTİ 🎮";
+    document.getElementById('next-round-btn-area').classList.add('hidden');
+    document.getElementById('result-scoreboard').innerHTML = "";
+    let btn = document.createElement('button');
+    btn.innerText = "🏠 LOBİYE DÖN";
+    btn.className = "btn btn-main";
+    btn.onclick = ()=>resetToLobby();
+    document.getElementById('result-body').appendChild(btn);
 };
 </script>
 </body>
