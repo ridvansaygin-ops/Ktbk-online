@@ -426,6 +426,22 @@ function finishRevealAndStartGame(){
 }
 function toggleGameWord(){ let w=document.getElementById('game-word-box'); w.classList.toggle('hidden'); document.getElementById('toggle-word-btn').innerText=w.classList.contains('hidden')?"👁️ GÖR":"🔒 GİZLE"; }
 function startDiscussion(){
+    // TARTIŞMA İÇİN EN AZ 3 KİŞİ GEREKLİ
+    let aliveCount = currentGame.playersSnapshot.filter(p => p.alive).length;
+    if(aliveCount < 3){
+        if(aliveCount === 2){
+            checkSpyMajority();
+        } else if(aliveCount === 1){
+            if(currentGame.currentRound < currentGame.totalRounds){
+                currentGame.currentRound++;
+                startNewRound();
+            } else {
+                showFinalGameResults(false);
+            }
+        }
+        return;
+    }
+    
     if(discussionActive) return;
     discussionActive = true;
     currentSpeakerIdx = 0;
@@ -647,7 +663,23 @@ function calculateResults(){
             return;
         }
         
-        // Hala köstebek var - TEKRAR TARTIŞ
+        // 2 kişi kaldıysa (1 köstebek + 1 sivil) direkt sonraki kelimeye geç
+        let aliveAfter = currentGame.playersSnapshot.filter(p => p.alive);
+        if(aliveAfter.length === 2){
+            let resultData = { 
+                title: "🎯 KÖSTEBEK BULUNDU!", 
+                body: `${target} köstebekti! 1 köstebek + 1 sivil kaldı. Sonraki kelimeye geçiliyor.`, 
+                gameEnded: false, 
+                needNewDiscussion: false,
+                nextWord: true
+            };
+            broadcast({type:'result_sync', resultData});
+            showResultScreen(resultData);
+            playSound('spy_caught');
+            return;
+        }
+        
+        // Hala köstebek var ve 3+ kişi var - TEKRAR TARTIŞ
         let resultData = { 
             title: `${target} - KÖSTEBEK`, 
             body: `✅ Doğru tahmin! Bilenler: ${bilenler.length ? bilenler.join(', ') : 'Kimse bilemedi'}. Tekrar tartışma başlıyor.`, 
@@ -674,7 +706,23 @@ function calculateResults(){
             }
         }
         
-        // Sivil elendi - TEKRAR TARTIŞ
+        // 2 kişi kaldıysa (1 köstebek + 1 sivil) direkt sonraki kelimeye geç
+        let aliveAfter = currentGame.playersSnapshot.filter(p => p.alive);
+        if(aliveAfter.length === 2){
+            let resultData = { 
+                title: `${target} - SİVİL`, 
+                body: `❌ Yanlış kişi! Köstebekler +1 puan aldı. 1 köstebek + 1 sivil kaldı. Sonraki kelimeye geçiliyor.`, 
+                gameEnded: false, 
+                needNewDiscussion: false,
+                nextWord: true
+            };
+            broadcast({type:'result_sync', resultData});
+            showResultScreen(resultData);
+            playSound('spy_escape');
+            return;
+        }
+        
+        // Sivil elendi ve 3+ kişi var - TEKRAR TARTIŞ
         let resultData = { 
             title: `${target} - SİVİL`, 
             body: `❌ Yanlış kişi! Köstebekler +1 puan aldı. Tekrar tartışma başlıyor.`, 
@@ -698,6 +746,7 @@ function checkSpyMajority() {
     let aliveSpies = alive.filter(p => currentGame.spyNames.includes(p.name));
     let aliveCivils = alive.filter(p => !currentGame.spyNames.includes(p.name));
     
+    // 2 kişi kaldıysa (1e1) veya köstebek sayısı fazlaysa
     if(aliveSpies.length >= aliveCivils.length && aliveCivils.length > 0) {
         currentGame.majorityAwarded = true;
         
@@ -707,24 +756,19 @@ function checkSpyMajority() {
             let origIdx = players.findIndex(pp=>pp.name===spy.name);
             if(origIdx !== -1) players[origIdx].score += 1;
         }
+        
+        // SONRAKİ KELİMEYE GEÇ - LİDER BUTONA BASACAK
         let resultData = { 
             title: "KÖSTEBEKLER KAZANDI!", 
-            body: `Köstebekler (${spyNamesStr}) sayıca üstünlük sağladı! Her köstebek +1 puan aldı. Sonraki kelimeye geçiliyor.`, 
+            body: `Köstebekler (${spyNamesStr}) sayıca üstünlük sağladı! Her köstebek +1 puan aldı. Lider 'SONRAKİ KELİME' butonuna bassın.`, 
             gameEnded: false, 
             needNewDiscussion: false,
             nextWord: true
         };
+        
         showResultScreen(resultData);
         broadcast({type:'result_sync', resultData});
         
-        setTimeout(() => {
-            if(currentGame.currentRound < currentGame.totalRounds){
-                currentGame.currentRound++;
-                startNewRound();
-            } else {
-                showFinalGameResults(false);
-            }
-        }, 3000);
         return true;
     }
     return false;
@@ -742,7 +786,7 @@ function showResultScreen(data){
         nextInfo = `🔄 Aynı kelime çiftiyle yeni bir tartışma başlayacak.`;
         buttonText = "🔄 TEKRAR TARTIŞ";
     } else if(data.nextWord){
-        nextInfo = `📌 Sonraki kelimeye geçiliyor...`;
+        nextInfo = `📌 Sonraki kelimeye geçmek için butona bas.`;
         buttonText = "⏩ SONRAKİ KELİME";
     } else if(data.gameEnded){
         nextInfo = "🏆 OYUN SONA ERDİ! 🏆";
@@ -776,8 +820,18 @@ function showResultScreen(data){
             btn.onclick = () => { showFinalGameResults(false); };
         } else if(needNewDiscussion){
             btn.onclick = () => {
-                if(checkSpyMajority()) return;
+                // TEKRAR TARTIŞ - Aynı kelimeyle devam
                 let remainingPlayers = currentGame.playersSnapshot.filter(p=>p.alive);
+                if(remainingPlayers.length < 3){
+                    // 2 veya 1 kişi kaldıysa direkt sonraki kelimeye geç
+                    if(currentGame.currentRound < currentGame.totalRounds){
+                        currentGame.currentRound++;
+                        startNewRound();
+                    } else {
+                        showFinalGameResults(false);
+                    }
+                    return;
+                }
                 let newDiscussionOrder = createRandomDiscussionOrder(remainingPlayers, currentGame.mode, currentGame.spyNames);
                 currentGame.discussionOrder = newDiscussionOrder;
                 document.getElementById('screen-result').classList.add('hidden');
@@ -789,6 +843,7 @@ function showResultScreen(data){
             };
         } else if(data.nextWord){
             btn.onclick = () => {
+                // SONRAKİ KELİME
                 if(currentGame.currentRound < currentGame.totalRounds){
                     currentGame.currentRound++;
                     startNewRound();
@@ -878,7 +933,7 @@ function resetToLobby(){
     voteStarted=false; hasVoted=false;
     if(voteTimer) clearInterval(voteTimer);
     if(!whatsappModeActive) { toggleLocalMic(false); for(let name in remoteStreams) remoteStreams[name].muted = true; }
-}     
+}
 </script>
 </body>
 </html>
