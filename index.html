@@ -590,7 +590,8 @@ function calculateResults(){
     if(!isHost) return;
     voteStarted=false; if(voteTimer) clearInterval(voteTimer);
     
-    // Önce oyun sonu kontrolü
+    let isLastRound = (currentGame.currentRound >= currentGame.totalRounds);
+    if(isLastRound) { showFinalGameResults(false); return; }
     if(checkGameEnd()) return;
     
     let alive = currentGame.playersSnapshot.filter(p=>p.alive);
