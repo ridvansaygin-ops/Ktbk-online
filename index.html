@@ -358,20 +358,7 @@ const kelimeHavuzu = [["Kredi Kartı","Nakit Para"],["Metrobüs","Metro"],["Gök
 let fullHavuz = kelimeHavuzu;
 
 function checkGameEnd() {
-    let alive = currentGame.playersSnapshot.filter(p => p.alive);
-    let moleCount = alive.filter(p => currentGame.spyNames.includes(p.name)).length;
-    let civilCount = alive.filter(p => !currentGame.spyNames.includes(p.name)).length;
     
-    // Köstebek ≥ Sivil ise oyun biter
-    if(moleCount >= civilCount && (moleCount + civilCount) >= 2) {
-        showFinalGameResults(true);
-        return true;
-    }
-    // Tüm köstebekler elendiyse siviller kazanır
-    if(moleCount === 0 && civilCount > 0) {
-        showFinalGameResults(false);
-        return true;
-    }
     return false;
 }
 
@@ -590,7 +577,12 @@ function calculateResults(){
     if(!isHost) return;
     voteStarted=false; if(voteTimer) clearInterval(voteTimer);
     
-    // Önce oyun sonu kontrolü
+let isLastRound = (currentGame.currentRound >= currentGame.totalRounds);
+if(isLastRound) {
+    showFinalGameResults(false);
+    return;
+}
+    
     if(checkGameEnd()) return;
     
     let alive = currentGame.playersSnapshot.filter(p=>p.alive);
