@@ -162,7 +162,7 @@ function vibrateForPlayer(playerName) {
     if(navigator.vibrate) navigator.vibrate(200); // 0.2 saniye, istersen 500 yap
 }
 // ========== 2. PEERJS + WHATSAPP MODU (DÜZELTİLMİŞ) ==========
-// ========== 2. PARÇA: PEERJS + WHATSAPP MODU (DÜZELTİLMİŞ, OY SENKRONU) ==========
+// ========== 2. PARÇA: PEERJS + WHATSAPP MODU (DÜZENLENMİŞ, OY SENKRONLU) ==========
 let liderBaglantisi = null;  // Lider olmayanlar için bağlantı
 
 async function initMicrophone() {
@@ -716,7 +716,6 @@ function renderVoteUI() {
         document.getElementById('vote-timer').innerText = "---";
     }
 }
-
 // OY VERME
 function submitVote(target) {
     if (hasVoted || !voteStarted) return;
@@ -726,25 +725,27 @@ function submitVote(target) {
         if (target === 'PAS') currentGame.playerVotes[myName] = 'PAS';
         else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[myName] = target; }
         renderVoteUI();
+        broadcast({ type: 'vote_update', playerVotes: currentGame.playerVotes });
         let alive = currentGame.playersSnapshot.filter(p => p.alive);
         if (Object.keys(currentGame.playerVotes).length >= alive.length) calculateResults();
     } else {
-        if (window.liderBaglantisi) window.liderBaglantisi.send({ type: 'vote_submit', voter: myName, target });
+        if (window.liderBaglantisi) {
+            window.liderBaglantisi.send({ type: 'vote_submit', voter: myName, target });
+        }
         document.getElementById('vote-options').innerHTML = `<div>✅ Oy verildi: ${target === 'PAS' ? 'PAS' : target}</div>`;
     }
 }
 
-// LİDERE GELEN OY İŞLEME
 function handleVoteSubmission(voter, target) {
     if (!isHost) return;
     if (currentGame.playerVotes[voter]) return;
     if (target === 'PAS') currentGame.playerVotes[voter] = 'PAS';
     else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[voter] = target; }
     renderVoteUI();
+    broadcast({ type: 'vote_update', playerVotes: currentGame.playerVotes });
     let alive = currentGame.playersSnapshot.filter(p => p.alive);
     if (Object.keys(currentGame.playerVotes).length >= alive.length) calculateResults();
 }
-
 // KÖSTEBEK ÇOĞUNLUK KONTROLÜ (her oylama sonrası)
 function checkSpyMajority() {
     if (!currentGame || !currentGame.playersSnapshot) return false;
