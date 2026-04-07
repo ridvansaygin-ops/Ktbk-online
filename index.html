@@ -162,6 +162,9 @@ function vibrateForPlayer(playerName) {
     if(navigator.vibrate) navigator.vibrate(200); // 0.2 saniye, istersen 500 yap
 }
 // ========== 2. PEERJS + WHATSAPP MODU (DÜZELTİLMİŞ) ==========
+// ========== 2. PARÇA: PEERJS + WHATSAPP MODU (DÜZELTİLMİŞ, OY SENKRONU) ==========
+let liderBaglantisi = null;  // Lider olmayanlar için bağlantı
+
 async function initMicrophone() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -304,6 +307,7 @@ function handleDataMessage(d, conn) {
     else if(d.type === 'force_mic_off') { if(d.target === myName && !whatsappModeActive) toggleLocalMic(false); }
     else if(d.type === 'start_game') { startGameFromHost(d.gameData); }
     else if(d.type === 'vote_submit') { if(isHost) handleVoteSubmission(d.voter, d.target); }
+    else if(d.type === 'vote_update') { if(!isHost) { currentGame.playerVotes = d.playerVotes; renderVoteUI(); } }
     else if(d.type === 'result_sync') { showResultScreen(d.resultData); }
     else if(d.type === 'next_round') { if(!isHost) goToNextRound(); }
     else if(d.type === 'disc_start') {
@@ -380,7 +384,6 @@ if(joinId) {
         </div>
     `;
 }
-// ========== 3. OYUN MEKANİĞİ (DÜZELTİLMİŞ, KATİL MODU, OY GÖSTERİMİ) ==========
 // ========== 3. PARÇA: OYUN MEKANİĞİ (SIFIRDAN, KURALLARA UYGUN) ==========
 // KELİME HAVUZU (örnek 5 çift, istediğin kadar ekleyebilirsin)
 const kelimeHavuzu = [
