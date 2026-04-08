@@ -492,7 +492,7 @@ function submitVote(target) {
         if (target === 'PAS') currentGame.playerVotes[myName] = 'PAS';
         else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[myName] = target; }
         renderSimpleVoteUI();
-        let alive = currentGame.playersSnapshot.filter(p => p.alive);
+        let alivePlayers = isHost ? currentGame.playersSnapshot.filter(p => p.alive) : players.filter(p => p.alive);
         if (Object.keys(currentGame.playerVotes).length >= alive.length) calculateResults();
     } else {
         if (liderBaglantisi) { liderBaglantisi.send({ type: 'vote_submit', voter: myName, target }); }
