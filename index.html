@@ -464,7 +464,7 @@ function startVotingPhase() {
 function renderSimpleVoteUI() {
     if (!voteStarted) return;
     // Lider değilse players dizisini kullan, lider kendi snapshot'ını kullanır
-    let alivePlayers = isHost ? currentGame.playersSnapshot.filter(p => p.alive) : players.filter(p => p.alive);
+    let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
 let currentPlayer = currentGame.playersSnapshot.find(p => p.name === myName);
     if (currentPlayer && !currentPlayer.alive) {
         document.getElementById('vote-options').innerHTML = `<div class="eliminated-msg">❌ Elendiniz, oy kullanamazsınız.<br>Lütfen bekleyin.</div>`;
@@ -489,9 +489,7 @@ let currentPlayer = currentGame.playersSnapshot.find(p => p.name === myName);
 function submitVote(target) {
     if (hasVoted || !voteStarted) return;
     // Lider değilse kendi oyuncu bilgisini players'dan al
-    let currentPlayer = isHost ? currentGame.playersSnapshot.find(p => p.name === myName) : players.find(p => p.name === myName);
-    if (!currentPlayer || !currentPlayer.alive) { alert("Elenen oyuncu oy kullanamaz!"); return; }
-    // Hedefin hayatta olup olmadığını kontrol et (lider snapshot, diğer players)
+    let currentPlayer = currentGame.playersSnapshot.find(p => p.name === myName);
 let targetPlayer = currentGame.playersSnapshot.find(p => p.name === target);
     if (target !== 'PAS' && (!targetPlayer || !targetPlayer.alive)) { alert("Elenen oyuncuya oy veremezsiniz!"); return; }
     if (voteTimer) clearInterval(voteTimer);
@@ -499,6 +497,10 @@ let targetPlayer = currentGame.playersSnapshot.find(p => p.name === target);
     if (isHost) {
         if (target === 'PAS') currentGame.playerVotes[myName] = 'PAS';
         else { currentGame.votes[target] = (currentGame.votes[target] || 0) + 1; currentGame.playerVotes[myName] = target; }
+        if (target !== 'PAS' && (!targetPlayer || !targetPlayer.alive)) {
+    alert("Elenen oyuncuya oy veremezsin!");
+    return;
+}
         renderSimpleVoteUI();
 let alivePlayers = currentGame.playersSnapshot.filter(p => p.alive);
         if (Object.keys(currentGame.playerVotes).length >= alive.length) calculateResults();
